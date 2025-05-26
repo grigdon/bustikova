@@ -13,6 +13,19 @@ questions <- c("CD", "Q6AA", "Q6AB", "Q6AC",
 
 data_cz_questions <- data_cz[questions]
 
+## Remove later ###############################
+
+# Convert response columns to numeric then recode: 1->4, 4->1, 2->3, 3->2
+data_cz_questions <- data_cz_questions %>%
+  mutate(across(-CD, ~ as.numeric(.x))) %>%
+  mutate(across(-CD, ~ recode(.x,
+                              `1` = 4,
+                              `4` = 1,
+                              `2` = 3,
+                              `3` = 2)))
+
+################################################
+
 summary(data_cz_questions)
 
 # This is a big issue here. These '9' responses should be imputed on the {1, 2, 3, 4} Likert Scale. 
@@ -187,4 +200,4 @@ ggsave(filename = "~/projects/bustikova/output/czechia_difference_plot.png",
        width = 10, height = 7, device = "png", bg = "white")
 
 # clears env variables
-rm(list = ls())
+# rm(list = ls())
