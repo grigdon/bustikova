@@ -13,8 +13,6 @@ questions <- c("CD", "Q6AA", "Q6AB", "Q6AC",
 
 data_cz_questions <- data_cz[questions]
 
-## Remove later ###############################
-
 # Convert response columns to numeric then recode: 1->4, 4->1, 2->3, 3->2
 data_cz_questions <- data_cz_questions %>%
   mutate(across(-CD, ~ as.numeric(.x))) %>%
@@ -24,21 +22,10 @@ data_cz_questions <- data_cz_questions %>%
                               `2` = 3,
                               `3` = 2)))
 
-################################################
+# Map '9' to '3' for all Q06 columns
+data_cz_questions <- data_cz_questions %>%
+  mutate(across(Q6AA:Q6BC, ~ ifelse(.x == 9, 3, .x)))
 
-summary(data_cz_questions)
-
-# This is a big issue here. These '9' responses should be imputed on the {1, 2, 3, 4} Likert Scale. 
-# These responses were never handled with previous processing
-
-# # CD              Q6AA           Q6AB            Q6AC            Q6BA            Q6BB            Q6BC      
-# Min.:4.0   Min.:1.00   Min.:1.000   Min.:1.000   Min.:1.000   Min.:1.000   Min.:1.000
-# 1st Qu.:300.2   1st Qu.:1.00   1st Qu.:4.000   1st Qu.:2.000   1st Qu.:1.000   1st Qu.:3.000   1st Qu.:2.000
-# Median:579.5   Median:2.00   Median:4.000   Median:3.000   Median:2.000   Median:4.000   Median:3.000
-# Mean:577.7   Mean:2.39   Mean:3.938   Mean:3.012   Mean:2.455   Mean:3.841   Mean:3.137
-# 3rd Qu.:853.8   3rd Qu.:3.00   3rd Qu.:4.000   3rd Qu.:4.000   3rd Qu.:4.000   3rd Qu.:4.000   3rd Qu.:4.000
-# Max.:1129.0   Max.:9.00   Max.:9.000   Max.:9.000   Max.:9.000   Max.:9.000   Max.:9.000
-# NA's   :492    NA's:493     NA's   :492     NA's:508     NA's   :509     NA's:506
 
 # Define a function to calculate the proportion of responses equal to y
 prop <- function(x, y) {
@@ -88,7 +75,7 @@ stacked_plot <- ggplot(mh, aes(x = rowname, y = value, fill = variable)) +
     panel.grid.minor = element_blank()
   )
 
-ggsave(filename = "~/projects/bustikova/output/czechia_stacked_bar_graph.png", 
+ggsave(filename = "~/projects/bustikova/output/survey_response_distribution/czechia_stacked_bar_graph.png", 
        plot = stacked_plot,
        width = 10, height = 7, device = "png", bg = "white")
 
@@ -143,7 +130,7 @@ compare_bar_graph <- ggplot(mean_df, aes(x = question_type, y = mean_response, f
     panel.grid.minor = element_blank()
   )
 
-ggsave(filename = "~/projects/bustikova/output/czechia_compare_bar_graph.png", 
+ggsave(filename = "~/projects/bustikova/output/average_treatment_standard/czechia_compare_bar_graph.png", 
        plot = compare_bar_graph,
        width = 10, height = 7, device = "png", bg = "white")
 
@@ -195,9 +182,96 @@ difference_plot <- ggplot(diff_df, aes(x = question, y = difference)) +
   ) +
   scale_y_continuous(limits = c(min(differences) - 0.1, max(differences) + 0.1))
 
-ggsave(filename = "~/projects/bustikova/output/czechia_difference_plot.png", 
+ggsave(filename = "~/projects/bustikova/output/average_treatment_difference/czechia_difference_plot.png", 
        plot = difference_plot,
        width = 10, height = 7, device = "png", bg = "white")
 
-# clears env variables
-# rm(list = ls())
+#===============================
+# Save Numerical Results to PDF
+#===============================
+library(gridExtra)
+library(grid)
+
+# Create formatted tables for PDF
+pdf("~/projects/bustikova/output/numerical_results/czechia_numerical_results.pdf", width = 11, height = 8.5)
+
+# Page 1: Response Proportions
+grid.newpage()
+grid.text("Czechia Analysis: Numerical Results", x = 0.5, y = 0.95, 
+          gp = gpar(fontsize = 20, fontface = "bold"))
+grid.text("Response Proportions by Question", x = 0.5, y = 0.85, 
+          gp = gpar(fontsize = 16, fontface = "bold"))
+
+# Format proportion table
+prop_table <- round(h[1:4], 3)
+prop_table$Question <- rownames(prop_table)
+prop_table <- prop_table[, c(5, 1:4)]  # Reorder columns
+
+# Convert to table for display
+prop_grob <- tableGrob(prop_table, rows = NULL, 
+                       theme = ttheme_default(base_size = 12))
+grid.draw(prop_grob)
+
+# Page 2: Treatment Effects
+grid.newpage()
+grid.text("Treatment Effects (Experimental - Control)", x = 0.5, y = 0.95, 
+          gp = gpar(fontsize = 18, fontface = "bold"))
+
+# Create comprehensive results table
+results_table <- data.frame(
+  Question = names(differences),
+  Control_Mean = round(control_means_vec, 3),
+  Experimental_Mean = round(experimental_means_vec, 3),
+  Difference = round(differences, 3),
+  Effect_Direction = ifelse(differences > 0, "Positive", "Negative"),
+  stringsAsFactors = FALSE
+)
+
+results_grob <- tableGrob(results_table, rows = NULL,
+                          theme = ttheme_default(base_size = 12))
+grid.draw(results_grob)
+
+# Add summary statistics as text
+grid.text("Summary Statistics:", x = 0.1, y = 0.4, 
+          gp = gpar(fontsize = 14, fontface = "bold"), just = "left")
+grid.text(paste("Mean treatment effect:", round(mean(differences), 3)), 
+          x = 0.1, y = 0.35, gp = gpar(fontsize = 12), just = "left")
+grid.text(paste("Range of effects:", round(min(differences), 3), "to", round(max(differences), 3)), 
+          x = 0.1, y = 0.32, gp = gpar(fontsize = 12), just = "left")
+grid.text(paste("Number of positive effects:", sum(differences > 0)), 
+          x = 0.1, y = 0.29, gp = gpar(fontsize = 12), just = "left")
+grid.text(paste("Number of negative effects:", sum(differences < 0)), 
+          x = 0.1, y = 0.26, gp = gpar(fontsize = 12), just = "left")
+
+# Page 3: Sample Sizes
+grid.newpage()
+grid.text("Sample Sizes (Non-missing Responses)", x = 0.5, y = 0.95, 
+          gp = gpar(fontsize = 18, fontface = "bold"))
+
+sample_sizes <- data.frame(
+  Question = c("Q6AA (Control A)", "Q6AB (Control B)", "Q6AC (Control C)", 
+               "Q6BA (Experimental A)", "Q6BB (Experimental B)", "Q6BC (Experimental C)"),
+  N = c(
+    sum(!is.na(data_cz_questions$Q6AA)),
+    sum(!is.na(data_cz_questions$Q6AB)),
+    sum(!is.na(data_cz_questions$Q6AC)),
+    sum(!is.na(data_cz_questions$Q6BA)),
+    sum(!is.na(data_cz_questions$Q6BB)),
+    sum(!is.na(data_cz_questions$Q6BC))
+  )
+)
+
+sample_grob <- tableGrob(sample_sizes, rows = NULL,
+                         theme = ttheme_default(base_size = 12))
+grid.draw(sample_grob)
+
+# Add transformation note
+grid.text("Note: All values coded as '9' were recoded to '3' (Agree) before analysis", 
+          x = 0.5, y = 0.2, gp = gpar(fontsize = 10, fontface = "italic"))
+
+dev.off()
+
+cat("Numerical results saved to: ~/projects/bustikova/output/czechia_numerical_results.pdf")
+
+# Clean up
+rm(list = ls())

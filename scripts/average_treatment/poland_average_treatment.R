@@ -12,13 +12,31 @@ data_poland <- read_sav("~/projects/bustikova/raw_data/poland_raw_data.sav")
 questions <- c("id", "Q06A", "Q06B", "Q06C", "Q06D", "Q06E", "Q06F")
 data_poland_questions <- data_poland[questions]
 
+# Map '9' to '3' for all Q06 columns
+data_poland_questions <- data_poland_questions %>%
+  mutate(across(Q06A:Q06F, ~ ifelse(.x == 9, 3, .x)))
+
+# Alternative approach using base R if you prefer:
+# question_cols <- c("Q06A", "Q06B", "Q06C", "Q06D", "Q06E", "Q06F")
+# data_poland_questions[question_cols] <- lapply(data_poland_questions[question_cols], 
+#                                                function(x) ifelse(x == 9, 3, x))
+
 # Define a function to calculate the proportion of responses equal to y
 prop <- function(x, y) {
   sum(x == y, na.rm = TRUE) / sum(!is.na(x))
 }
 
-# Quick check
+# Quick check to see the transformation worked
 summary(data_poland_questions)
+
+# Check if any 9s remain (should be 0)
+cat("Number of 9s remaining in Q06 columns:", 
+    sum(data_poland_questions[2:7] == 9, na.rm = TRUE), "\n")
+
+# Check how many values were transformed
+original_data <- data_poland[questions]
+n_transformed <- sum(original_data[2:7] == 9, na.rm = TRUE)
+cat("Number of values transformed from 9 to 3:", n_transformed, "\n")
 
 #-----------------------------------
 # Calculate proportions (1–4) per question
@@ -64,7 +82,7 @@ stacked_plot <- ggplot(mh, aes(x = rowname, y = value, fill = variable)) +
     panel.grid.minor = element_blank()
   )
 
-ggsave(filename = "~/projects/bustikova/output/poland_stacked_bar_graph.png",
+ggsave(filename = "~/projects/bustikova/output/survey_response_distribution/poland_stacked_bar_graph.png",
        plot     = stacked_plot,
        width    = 10, height = 7,
        device   = "png", bg = "white")
@@ -119,7 +137,7 @@ compare_bar_graph <- ggplot(mean_df, aes(x = question_type, y = mean_response, f
     panel.grid.minor = element_blank()
   )
 
-ggsave(filename = "~/projects/bustikova/output/poland_compare_bar_graph.png",
+ggsave(filename = "~/projects/bustikova/output/average_treatment_standard/poland_compare_bar_graph.png",
        plot     = compare_bar_graph,
        width    = 10, height = 7,
        device   = "png", bg = "white")
@@ -169,10 +187,97 @@ difference_plot <- ggplot(diff_df, aes(x = question, y = difference)) +
   ) +
   scale_y_continuous(limits = c(min(differences) - 0.1, max(differences) + 0.1))
 
-ggsave(filename = "~/projects/bustikova/output/poland_difference_plot.png",
+ggsave(filename = "~/projects/bustikova/output/average_treatment_difference/poland_difference_plot.png",
        plot     = difference_plot,
        width    = 10, height = 7,
        device   = "png", bg = "white")
 
+#===============================
+# Save Numerical Results to PDF
+#===============================
+library(gridExtra)
+library(grid)
+
+# Create formatted tables for PDF
+pdf("~/projects/bustikova/output/numerical_results/poland_numerical_results.pdf", width = 11, height = 8.5)
+
+# Page 1: Response Proportions
+grid.newpage()
+grid.text("Poland Analysis: Numerical Results", x = 0.5, y = 0.95, 
+          gp = gpar(fontsize = 20, fontface = "bold"))
+grid.text("Response Proportions by Question", x = 0.5, y = 0.85, 
+          gp = gpar(fontsize = 16, fontface = "bold"))
+
+# Format proportion table
+prop_table <- round(h[1:4], 3)
+prop_table$Question <- rownames(prop_table)
+prop_table <- prop_table[, c(5, 1:4)]  # Reorder columns
+
+# Convert to table for display
+prop_grob <- tableGrob(prop_table, rows = NULL, 
+                       theme = ttheme_default(base_size = 12))
+grid.draw(prop_grob)
+
+# Page 2: Treatment Effects
+grid.newpage()
+grid.text("Treatment Effects (Experimental - Control)", x = 0.5, y = 0.95, 
+          gp = gpar(fontsize = 18, fontface = "bold"))
+
+# Create comprehensive results table
+results_table <- data.frame(
+  Question = names(differences),
+  Control_Mean = round(control_means_vec, 3),
+  Experimental_Mean = round(experimental_means_vec, 3),
+  Difference = round(differences, 3),
+  Effect_Direction = ifelse(differences > 0, "Positive", "Negative"),
+  stringsAsFactors = FALSE
+)
+
+results_grob <- tableGrob(results_table, rows = NULL,
+                          theme = ttheme_default(base_size = 12))
+grid.draw(results_grob)
+
+# Add summary statistics as text
+grid.text("Summary Statistics:", x = 0.1, y = 0.4, 
+          gp = gpar(fontsize = 14, fontface = "bold"), just = "left")
+grid.text(paste("Mean treatment effect:", round(mean(differences), 3)), 
+          x = 0.1, y = 0.35, gp = gpar(fontsize = 12), just = "left")
+grid.text(paste("Range of effects:", round(min(differences), 3), "to", round(max(differences), 3)), 
+          x = 0.1, y = 0.32, gp = gpar(fontsize = 12), just = "left")
+grid.text(paste("Number of positive effects:", sum(differences > 0)), 
+          x = 0.1, y = 0.29, gp = gpar(fontsize = 12), just = "left")
+grid.text(paste("Number of negative effects:", sum(differences < 0)), 
+          x = 0.1, y = 0.26, gp = gpar(fontsize = 12), just = "left")
+
+# Page 3: Sample Sizes
+grid.newpage()
+grid.text("Sample Sizes (Non-missing Responses)", x = 0.5, y = 0.95, 
+          gp = gpar(fontsize = 18, fontface = "bold"))
+
+sample_sizes <- data.frame(
+  Question = c("Q06A (Control A)", "Q06B (Control B)", "Q06C (Control C)", 
+               "Q06D (Experimental A)", "Q06E (Experimental B)", "Q06F (Experimental C)"),
+  N = c(
+    sum(!is.na(data_poland_questions$Q06A)),
+    sum(!is.na(data_poland_questions$Q06B)),
+    sum(!is.na(data_poland_questions$Q06C)),
+    sum(!is.na(data_poland_questions$Q06D)),
+    sum(!is.na(data_poland_questions$Q06E)),
+    sum(!is.na(data_poland_questions$Q06F))
+  )
+)
+
+sample_grob <- tableGrob(sample_sizes, rows = NULL,
+                         theme = ttheme_default(base_size = 12))
+grid.draw(sample_grob)
+
+# Add transformation note
+grid.text("Note: All values coded as '9' were recoded to '3' (Agree) before analysis", 
+          x = 0.5, y = 0.2, gp = gpar(fontsize = 10, fontface = "italic"))
+
+dev.off()
+
+cat("Numerical results saved to: ~/projects/bustikova/output/poland_numerical_results.pdf\n")
+
 # Clean up
-# rm(list = ls())
+rm(list = ls())

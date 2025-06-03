@@ -6,7 +6,7 @@ library(haven)
 library(dplyr)
 
 # Read dataset from SPSS file
-data_slvk <- read_sav("~/projects/bustikova/scrubbed_data/slovakia_scrubbed.sav")
+data_slvk <- read_sav("~/projects/bustikova/output/scrubbed_data/slovakia_scrubbed.sav")
 
 questions <- c("id", "Control_A", "Control_B", "Control_C", 
                "Experimental_A", "Experimental_B", "Experimental_C")
@@ -176,5 +176,92 @@ ggsave(filename = "~/projects/bustikova/output/slovakia_difference_plot.png",
        plot = difference_plot,
        width = 10, height = 7, device = "png", bg = "white")
 
-# clears env variables
+#===============================
+# Save Numerical Results to PDF
+#===============================
+library(gridExtra)
+library(grid)
+
+# Create formatted tables for PDF
+pdf("~/projects/bustikova/output/numerical_results/slovakia_numerical_results.pdf", width = 11, height = 8.5)
+
+# Page 1: Response Proportions
+grid.newpage()
+grid.text("Slovakia Analysis: Numerical Results", x = 0.5, y = 0.95, 
+          gp = gpar(fontsize = 20, fontface = "bold"))
+grid.text("Response Proportions by Question", x = 0.5, y = 0.85, 
+          gp = gpar(fontsize = 16, fontface = "bold"))
+
+# Format proportion table
+prop_table <- round(h[1:4], 3)
+prop_table$Question <- rownames(prop_table)
+prop_table <- prop_table[, c(5, 1:4)]  # Reorder columns
+
+# Convert to table for display
+prop_grob <- tableGrob(prop_table, rows = NULL, 
+                       theme = ttheme_default(base_size = 12))
+grid.draw(prop_grob)
+
+# Page 2: Treatment Effects
+grid.newpage()
+grid.text("Treatment Effects (Experimental - Control)", x = 0.5, y = 0.95, 
+          gp = gpar(fontsize = 18, fontface = "bold"))
+
+# Create comprehensive results table
+results_table <- data.frame(
+  Question = names(differences),
+  Control_Mean = round(control_means_vec, 3),
+  Experimental_Mean = round(experimental_means_vec, 3),
+  Difference = round(differences, 3),
+  Effect_Direction = ifelse(differences > 0, "Positive", "Negative"),
+  stringsAsFactors = FALSE
+)
+
+results_grob <- tableGrob(results_table, rows = NULL,
+                          theme = ttheme_default(base_size = 12))
+grid.draw(results_grob)
+
+# Add summary statistics as text
+grid.text("Summary Statistics:", x = 0.1, y = 0.4, 
+          gp = gpar(fontsize = 14, fontface = "bold"), just = "left")
+grid.text(paste("Mean treatment effect:", round(mean(differences), 3)), 
+          x = 0.1, y = 0.35, gp = gpar(fontsize = 12), just = "left")
+grid.text(paste("Range of effects:", round(min(differences), 3), "to", round(max(differences), 3)), 
+          x = 0.1, y = 0.32, gp = gpar(fontsize = 12), just = "left")
+grid.text(paste("Number of positive effects:", sum(differences > 0)), 
+          x = 0.1, y = 0.29, gp = gpar(fontsize = 12), just = "left")
+grid.text(paste("Number of negative effects:", sum(differences < 0)), 
+          x = 0.1, y = 0.26, gp = gpar(fontsize = 12), just = "left")
+
+# Page 3: Sample Sizes
+grid.newpage()
+grid.text("Sample Sizes (Non-missing Responses)", x = 0.5, y = 0.95, 
+          gp = gpar(fontsize = 18, fontface = "bold"))
+
+sample_sizes <- data.frame(
+  Question = c("Control_A (Control A)", "Control_B (Control B)", "Control_C (Control C)", 
+               "Experimental_A (Experimental A)", "Experimental_B (Experimental B)", "Experimental_C (Experimental C)"),
+  N = c(
+    sum(!is.na(data_slvk_questions$Control_A)),
+    sum(!is.na(data_slvk_questions$Control_B)),
+    sum(!is.na(data_slvk_questions$Control_C)),
+    sum(!is.na(data_slvk_questions$Experimental_A)),
+    sum(!is.na(data_slvk_questions$Experimental_B)),
+    sum(!is.na(data_slvk_questions$Experimental_C))
+  )
+)
+
+sample_grob <- tableGrob(sample_sizes, rows = NULL,
+                         theme = ttheme_default(base_size = 12))
+grid.draw(sample_grob)
+
+# Add transformation note
+grid.text("Note: All values coded as '9' were recoded to '3' (Agree) before analysis", 
+          x = 0.5, y = 0.2, gp = gpar(fontsize = 10, fontface = "italic"))
+
+dev.off()
+
+cat("Numerical results saved to: ~/projects/bustikova/output/numerical_results/slovakia_numerical_results.pdf")
+
+# Clean up
 rm(list = ls())

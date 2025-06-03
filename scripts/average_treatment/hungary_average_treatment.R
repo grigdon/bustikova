@@ -189,5 +189,93 @@ ggsave(filename = "~/projects/bustikova/output/hungary_difference_plot.png",
        width    = 10, height = 7,
        device   = "png", bg = "white")
 
+#===============================
+# Save Numerical Results to PDF
+#===============================
+library(gridExtra)
+library(grid)
+
+# Create formatted tables for PDF
+pdf("~/projects/bustikova/output/numerical_results/hungary_numerical_results.pdf", width = 11, height = 8.5)
+
+# Page 1: Response Proportions
+grid.newpage()
+grid.text("Hungary Analysis: Numerical Results", x = 0.5, y = 0.95, 
+          gp = gpar(fontsize = 20, fontface = "bold"))
+grid.text("Response Proportions by Question", x = 0.5, y = 0.85, 
+          gp = gpar(fontsize = 16, fontface = "bold"))
+
+# Format proportion table
+prop_table <- round(h[1:4], 3)
+prop_table$Question <- rownames(prop_table)
+prop_table <- prop_table[, c(5, 1:4)]  # Reorder columns
+
+# Convert to table for display
+prop_grob <- tableGrob(prop_table, rows = NULL, 
+                       theme = ttheme_default(base_size = 12))
+grid.draw(prop_grob)
+
+# Page 2: Treatment Effects
+grid.newpage()
+grid.text("Treatment Effects (Experimental - Control)", x = 0.5, y = 0.95, 
+          gp = gpar(fontsize = 18, fontface = "bold"))
+
+# Create comprehensive results table
+results_table <- data.frame(
+  Question = names(differences),
+  Control_Mean = round(control_means_vec, 3),
+  Experimental_Mean = round(experimental_means_vec, 3),
+  Difference = round(differences, 3),
+  Effect_Direction = ifelse(differences > 0, "Positive", "Negative"),
+  stringsAsFactors = FALSE
+)
+
+results_grob <- tableGrob(results_table, rows = NULL,
+                          theme = ttheme_default(base_size = 12))
+grid.draw(results_grob)
+
+# Add summary statistics as text
+grid.text("Summary Statistics:", x = 0.1, y = 0.4, 
+          gp = gpar(fontsize = 14, fontface = "bold"), just = "left")
+grid.text(paste("Mean treatment effect:", round(mean(differences), 3)), 
+          x = 0.1, y = 0.35, gp = gpar(fontsize = 12), just = "left")
+grid.text(paste("Range of effects:", round(min(differences), 3), "to", round(max(differences), 3)), 
+          x = 0.1, y = 0.32, gp = gpar(fontsize = 12), just = "left")
+grid.text(paste("Number of positive effects:", sum(differences > 0)), 
+          x = 0.1, y = 0.29, gp = gpar(fontsize = 12), just = "left")
+grid.text(paste("Number of negative effects:", sum(differences < 0)), 
+          x = 0.1, y = 0.26, gp = gpar(fontsize = 12), just = "left")
+
+# Page 3: Sample Sizes
+grid.newpage()
+grid.text("Sample Sizes (Non-missing Responses)", x = 0.5, y = 0.95, 
+          gp = gpar(fontsize = 18, fontface = "bold"))
+
+sample_sizes <- data.frame(
+  Question = c("A6A_1 (Control A)", "A6A_2 (Control B)", "A6A_3 (Control C)", 
+               "A6B_1 (Experimental A)", "A6B_2 (Experimental B)", "A6B_3 (Experimental C)"),
+  N = c(
+    sum(!is.na(data_hu_questions$A6A_1)),
+    sum(!is.na(data_hu_questions$A6A_2)),
+    sum(!is.na(data_hu_questions$A6A_3)),
+    sum(!is.na(data_hu_questions$A6B_1)),
+    sum(!is.na(data_hu_questions$A6B_2)),
+    sum(!is.na(data_hu_questions$A6B_3))
+  )
+)
+
+sample_grob <- tableGrob(sample_sizes, rows = NULL,
+                         theme = ttheme_default(base_size = 12))
+grid.draw(sample_grob)
+
+# Add transformation note
+grid.text("Note: All values coded as '9' were recoded to '3' (Agree) before analysis", 
+          x = 0.5, y = 0.2, gp = gpar(fontsize = 10, fontface = "italic"))
+
+dev.off()
+
+cat("Numerical results saved to: ~/projects/bustikova/output/czechia_numerical_results.pdf")
+
 # Clean up
 rm(list = ls())
+
