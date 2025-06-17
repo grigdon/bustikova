@@ -6,9 +6,9 @@ library(haven)
 library(dplyr)
 
 # Read dataset from SPSS file
-data_slvk <- read_sav("~/projects/bustikova/output/scrubbed_data/slovakia_scrubbed.sav")
+data_slvk <- read_sav("~/projects/bustikova/data/scrubbed_data/slovakia_scrubbed.sav")
 
-questions <- c("id", "Control_A", "Control_B", "Control_C", 
+questions <- c("Control_A", "Control_B", "Control_C", 
                "Experimental_A", "Experimental_B", "Experimental_C")
 
 data_slvk_questions <- data_slvk[questions]
@@ -21,10 +21,10 @@ prop <- function(x, y) {
 # Calculate proportions for each response category (1 to 4) for questions 2 to 7
 # Removed the neutral category (previously y = 3)
 h <- data.frame(
-  "Strongly Disagree" = apply(data_slvk_questions[2:7], 2, prop, y = 1),
-  "Disagree"          = apply(data_slvk_questions[2:7], 2, prop, y = 2),
-  "Agree"             = apply(data_slvk_questions[2:7], 2, prop, y = 3),
-  "Strongly Agree"    = apply(data_slvk_questions[2:7], 2, prop, y = 4)
+  "Strongly Disagree" = apply(data_slvk_questions[1:6], 2, prop, y = 1),
+  "Disagree"          = apply(data_slvk_questions[1:6], 2, prop, y = 2),
+  "Agree"             = apply(data_slvk_questions[1:6], 2, prop, y = 3),
+  "Strongly Agree"    = apply(data_slvk_questions[1:6], 2, prop, y = 4)
 )
 
 # Add row names and set a specific order
@@ -62,7 +62,7 @@ stacked_plot <- ggplot(mh, aes(x = rowname, y = value, fill = variable)) +
     panel.grid.minor = element_blank()
   )
 
-ggsave(filename = "~/projects/bustikova/output/slovakia_stacked_bar_graph.png", 
+ggsave(filename = "~/projects/bustikova/output/avg_treat/survey_response_distribution/slovakia_stacked_bar_graph.png", 
        plot = stacked_plot,
        width = 10, height = 7, device = "png", bg = "white")
 
@@ -117,7 +117,7 @@ compare_bar_graph <- ggplot(mean_df, aes(x = question_type, y = mean_response, f
     panel.grid.minor = element_blank()
   )
 
-ggsave(filename = "~/projects/bustikova/output/slovakia_compare_bar_graph.png", 
+ggsave(filename = "~/projects/bustikova/output/avg_treat/average_treatment_standard/slovakia_compare_bar_graph.png", 
        plot = compare_bar_graph,
        width = 10, height = 7, device = "png", bg = "white")
 
@@ -169,10 +169,7 @@ difference_plot <- ggplot(diff_df, aes(x = question, y = difference)) +
   ) +
   scale_y_continuous(limits = c(min(differences) - 0.1, max(differences) + 0.1))
 
-if(!dir.exists("~/projects/AaD_Research/output/plots/slovakia/dist"))
-  stop("Directory not found!")
-
-ggsave(filename = "~/projects/bustikova/output/slovakia_difference_plot.png", 
+ggsave(filename = "~/projects/bustikova/output/avg_treat/average_treatment_difference/slovakia_difference_plot.png", 
        plot = difference_plot,
        width = 10, height = 7, device = "png", bg = "white")
 
@@ -183,7 +180,7 @@ library(gridExtra)
 library(grid)
 
 # Create formatted tables for PDF
-pdf("~/projects/bustikova/output/numerical_results/slovakia_numerical_results.pdf", width = 11, height = 8.5)
+pdf("~/projects/bustikova/output/avg_treat/numerical_results/slovakia_numerical_results.pdf", width = 11, height = 8.5)
 
 # Page 1: Response Proportions
 grid.newpage()
@@ -260,8 +257,6 @@ grid.text("Note: All values coded as '9' were recoded to '3' (Agree) before anal
           x = 0.5, y = 0.2, gp = gpar(fontsize = 10, fontface = "italic"))
 
 dev.off()
-
-cat("Numerical results saved to: ~/projects/bustikova/output/numerical_results/slovakia_numerical_results.pdf")
 
 # Clean up
 rm(list = ls())

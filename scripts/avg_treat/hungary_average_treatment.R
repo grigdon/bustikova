@@ -6,51 +6,34 @@ library(haven)
 library(dplyr)
 
 # Read dataset from SPSS file
-data_hu <- read_sav("~/projects/bustikova/raw_data/hungary_raw_data.sav")
+data_hu <- read_sav("~/projects/bustikova/data/scrubbed_data/hungary_scrubbed.sav")
 
 # Select only the ID and the six Hungary items (3 control, 3 experimental)
-questions <- c("id",
-               "A6A_1", "A6A_2", "A6A_3",
-               "A6B_1", "A6B_2", "A6B_3")
+questions <- c("Control_A", "Control_B", "Control_C", 
+               "Experimental_A", "Experimental_B", "Experimental_C")
 data_hu_questions <- data_hu[questions]
-
-## Remove later ###############################
-
-# Convert response columns to numeric then recode: 1->4, 4->1, 2->3, 3->2
-data_hu_questions <- data_hu_questions %>%
-  mutate(across(-id, ~ as.numeric(.x))) %>%
-  mutate(across(-id, ~ recode(.x,
-                              `1` = 4,
-                              `4` = 1,
-                              `2` = 3,
-                              `3` = 2)))
-
-################################################
 
 # Define a function to calculate the proportion of responses equal to y
 prop <- function(x, y) {
   sum(x == y, na.rm = TRUE) / sum(!is.na(x))
 }
 
-# Quick check
-summary(data_hu_questions)
-
 #-----------------------------------
 # Calculate proportions (1–4) per question
 #-----------------------------------
 h <- data.frame(
-  "Strongly Disagree" = apply(data_hu_questions[2:7], 2, prop, y = 1),
-  "Disagree"          = apply(data_hu_questions[2:7], 2, prop, y = 2),
-  "Agree"             = apply(data_hu_questions[2:7], 2, prop, y = 3),
-  "Strongly Agree"    = apply(data_hu_questions[2:7], 2, prop, y = 4)
+  "Strongly Disagree" = apply(data_hu_questions[1:6], 2, prop, y = 1),
+  "Disagree"          = apply(data_hu_questions[1:6], 2, prop, y = 2),
+  "Agree"             = apply(data_hu_questions[1:6], 2, prop, y = 3),
+  "Strongly Agree"    = apply(data_hu_questions[1:6], 2, prop, y = 4)
 )
 
 # Add a nice rowname factor in the order we want
 h$rowname <- rownames(h)
 h$rowname <- factor(h$rowname,
-                    levels = c("A6A_1", "A6B_1",
-                               "A6A_2", "A6B_2",
-                               "A6A_3", "A6B_3"),
+                    levels = c("Control_A", "Experimental_A",
+                               "Control_B", "Experimental_B",
+                               "Control_C", "Experimental_C"),
                     labels = c("Control A", "Experimental A",
                                "Control B", "Experimental B",
                                "Control C", "Experimental C"))
@@ -79,7 +62,7 @@ stacked_plot <- ggplot(mh, aes(x = rowname, y = value, fill = variable)) +
     panel.grid.minor = element_blank()
   )
 
-ggsave(filename = "~/projects/bustikova/output/hungary_stacked_bar_graph.png",
+ggsave(filename = "~/projects/bustikova/output/avg_treat/survey_response_distribution/hungary_stacked_bar_graph.png",
        plot     = stacked_plot,
        width    = 10, height = 7,
        device   = "png", bg = "white")
@@ -88,11 +71,11 @@ ggsave(filename = "~/projects/bustikova/output/hungary_stacked_bar_graph.png",
 # Calculate Means for Each Group
 #===============================
 control_means <- data_hu_questions %>%
-  select(A6A_1, A6A_2, A6A_3) %>%
+  select(Control_A, Control_B, Control_C) %>%
   summarise(across(everything(), ~ mean(.x, na.rm = TRUE)))
 
 treatment_means <- data_hu_questions %>%
-  select(A6B_1, A6B_2, A6B_3) %>%
+  select(Experimental_A, Experimental_B, Experimental_C) %>%
   summarise(across(everything(), ~ mean(.x, na.rm = TRUE)))
 
 # Reshape into long format
@@ -104,9 +87,9 @@ mean_df <- bind_rows(control_long, treatment_long)
 
 # Label question types
 mean_df$question_type <- case_when(
-  grepl("A6A_1|A6B_1", mean_df$question) ~ "a",
-  grepl("A6A_2|A6B_2", mean_df$question) ~ "b",
-  grepl("A6A_3|A6B_3", mean_df$question) ~ "c"
+  grepl("Control_A|Experimental_A", mean_df$question) ~ "a",
+  grepl("Control_B|Experimental_B", mean_df$question) ~ "b",
+  grepl("Control_C|Experimental_C", mean_df$question) ~ "c"
 )
 mean_df$question_type <- factor(mean_df$question_type,
                                 levels = c("a","b","c"),
@@ -134,7 +117,7 @@ compare_bar_graph <- ggplot(mean_df, aes(x = question_type, y = mean_response, f
     panel.grid.minor = element_blank()
   )
 
-ggsave(filename = "~/projects/bustikova/output/hungary_compare_bar_graph.png",
+ggsave(filename = "~/projects/bustikova/output/avg_treat/average_treatment_standard/hungary_compare_bar_graph.png",
        plot     = compare_bar_graph,
        width    = 10, height = 7,
        device   = "png", bg = "white")
@@ -143,14 +126,14 @@ ggsave(filename = "~/projects/bustikova/output/hungary_compare_bar_graph.png",
 # Calculate Difference (Experimental – Control)
 #===============================
 control_means_vec <- c(
-  A = mean(data_hu_questions$A6A_1, na.rm = TRUE),
-  B = mean(data_hu_questions$A6A_2, na.rm = TRUE),
-  C = mean(data_hu_questions$A6A_3, na.rm = TRUE)
+  A = mean(data_hu_questions$Control_A, na.rm = TRUE),
+  B = mean(data_hu_questions$Control_B, na.rm = TRUE),
+  C = mean(data_hu_questions$Control_C, na.rm = TRUE)
 )
 experimental_means_vec <- c(
-  A = mean(data_hu_questions$A6B_1, na.rm = TRUE),
-  B = mean(data_hu_questions$A6B_2, na.rm = TRUE),
-  C = mean(data_hu_questions$A6B_3, na.rm = TRUE)
+  A = mean(data_hu_questions$Experimental_A, na.rm = TRUE),
+  B = mean(data_hu_questions$Experimental_B, na.rm = TRUE),
+  C = mean(data_hu_questions$Experimental_C, na.rm = TRUE)
 )
 differences <- experimental_means_vec - control_means_vec
 
@@ -184,7 +167,7 @@ difference_plot <- ggplot(diff_df, aes(x = question, y = difference)) +
   ) +
   scale_y_continuous(limits = c(min(differences) - 0.1, max(differences) + 0.1))
 
-ggsave(filename = "~/projects/bustikova/output/hungary_difference_plot.png",
+ggsave(filename = "~/projects/bustikova/output/avg_treat/average_treatment_difference/hungary_difference_plot.png",
        plot     = difference_plot,
        width    = 10, height = 7,
        device   = "png", bg = "white")
@@ -196,7 +179,7 @@ library(gridExtra)
 library(grid)
 
 # Create formatted tables for PDF
-pdf("~/projects/bustikova/output/numerical_results/hungary_numerical_results.pdf", width = 11, height = 8.5)
+pdf("~/projects/bustikova/output/avg_treat/numerical_results/hungary_numerical_results.pdf", width = 11, height = 8.5)
 
 # Page 1: Response Proportions
 grid.newpage()
@@ -252,15 +235,15 @@ grid.text("Sample Sizes (Non-missing Responses)", x = 0.5, y = 0.95,
           gp = gpar(fontsize = 18, fontface = "bold"))
 
 sample_sizes <- data.frame(
-  Question = c("A6A_1 (Control A)", "A6A_2 (Control B)", "A6A_3 (Control C)", 
-               "A6B_1 (Experimental A)", "A6B_2 (Experimental B)", "A6B_3 (Experimental C)"),
+  Question = c("Control_A (Control A)", "Control_B (Control B)", "Control_C (Control C)", 
+               "Experimental_A (Experimental A)", "Experimental_B (Experimental B)", "Experimental_C (Experimental C)"),
   N = c(
-    sum(!is.na(data_hu_questions$A6A_1)),
-    sum(!is.na(data_hu_questions$A6A_2)),
-    sum(!is.na(data_hu_questions$A6A_3)),
-    sum(!is.na(data_hu_questions$A6B_1)),
-    sum(!is.na(data_hu_questions$A6B_2)),
-    sum(!is.na(data_hu_questions$A6B_3))
+    sum(!is.na(data_hu_questions$Control_A)),
+    sum(!is.na(data_hu_questions$Control_B)),
+    sum(!is.na(data_hu_questions$Control_C)),
+    sum(!is.na(data_hu_questions$Experimental_A)),
+    sum(!is.na(data_hu_questions$Experimental_B)),
+    sum(!is.na(data_hu_questions$Experimental_C))
   )
 )
 
@@ -274,8 +257,5 @@ grid.text("Note: All values coded as '9' were recoded to '3' (Agree) before anal
 
 dev.off()
 
-cat("Numerical results saved to: ~/projects/bustikova/output/czechia_numerical_results.pdf")
-
 # Clean up
 rm(list = ls())
-
