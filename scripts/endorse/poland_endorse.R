@@ -193,7 +193,7 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
     "EUPolGrievance" = "EU Dissatisfaction", # Simplified from Poland specific
     "NationalPride" = "National Pride",
     "MaleChauvinism" = "Male Leader", # Simplified from "Male Political Leader"
-    "Vote" = "PiS Vote", # Based on image and context
+    "Vote" = "PiS & Konf Vote", # Based on image and context
     "Rural" = "Rural", # Changed from 'Urban' assuming the variable is 'Rural'
     "Income_std" = "Income",
     "Age_std" = "Age",
