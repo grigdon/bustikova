@@ -185,7 +185,7 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
     "GayFamily" = "Gay Partner", # From image, assuming "Opposition: Gay Partner" implies just "Gay Partner" for label
     "DemonstrateTrad" = "Mobilize Trad Fam", # From image/Czechia script
     "NatPride" = "National Pride", # From image
-    "Male" = "Male", # From image
+    "Male" = "Female", # From image
     "MaleChauvinism" = "Male Leader", # From image
     "Age_std" = "Age", # From image
     "EconGrievanceProspInd" = "Economic Future", # From image/Czechia script
