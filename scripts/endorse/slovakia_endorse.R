@@ -146,6 +146,7 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
   delta_matrix_values$category <- NA
   
   # Define categories based on your provided groups and variable names
+  # 'Male' is now interpreted for its label, but the variable name remains 'Male'
   descriptives_socio_economic <- c("Age_std", "Male", "Education", "FamIncome_std", "Capital", "Religiosity")
   social_non_ethnic_conservatism <- c("ChildHome", "GayFamily", "MaleChauvinism", "DemonstrateTrad")
   performance_economy_and_government <- c("EconGrievanceProspInd", "NatPride")
@@ -157,8 +158,8 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
         variables %in% descriptives_socio_economic ~ "Descriptives Socio-Economic",
         variables %in% social_non_ethnic_conservatism ~ "Social (Non-Ethnic) Conservatism",
         variables %in% performance_economy_and_government ~ "Performance: Economy and Government",
-        grepl("Age_std:Male|Male:Age_std", variables) ~ "Interaction: Age × Male", # Handle both naming conventions for Male interaction
-        grepl("Age_std:Religiosity|Religiosity:Age_std", variables) ~ "Interaction: Age × Religiosity", # Handle both naming conventions for Religiosity interaction
+        grepl("Age_std:Male|Male:Age_std", variables) ~ "Interaction: Age × Female", # Changed to Female
+        grepl("Age_std:Religiosity|Religiosity:Age_std", variables) ~ "Interaction: Age × Religiosity", 
         TRUE ~ "Other" # Fallback for any variables not caught
       )
     )
@@ -173,7 +174,7 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
   category_order <- c("Descriptives Socio-Economic",
                       "Social (Non-Ethnic) Conservatism",
                       "Performance: Economy and Government",
-                      "Interaction: Age × Male",
+                      "Interaction: Age × Female", # Changed to Female
                       "Interaction: Age × Religiosity",
                       "Other")
   delta_matrix_values$category <- factor(delta_matrix_values$category, levels = intersect(category_order, unique(delta_matrix_values$category)))
@@ -181,28 +182,28 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
   # Define custom labels for variables (drawing inspiration from all scripts and image)
   custom_labels <- c(
     "Religiosity" = "Religiosity",
-    "ChildHome" = "Child Mom Dad", # From image
-    "GayFamily" = "Gay Partner", # From image, assuming "Opposition: Gay Partner" implies just "Gay Partner" for label
-    "DemonstrateTrad" = "Mobilize Trad Fam", # From image/Czechia script
-    "NatPride" = "National Pride", # From image
-    "Male" = "Female", # From image
-    "MaleChauvinism" = "Male Leader", # From image
-    "Age_std" = "Age", # From image
-    "EconGrievanceProspInd" = "Economic Future", # From image/Czechia script
-    "Education" = "Education", # From image
-    "FamIncome_std" = "Income", # From image
-    "Capital" = "Capital", # From image
+    "ChildHome" = "Child Mom Dad", 
+    "GayFamily" = "Gay Partner", 
+    "DemonstrateTrad" = "Mobilize Trad Fam", 
+    "NatPride" = "National Pride", 
+    "Male" = "Female", # Changed to Female
+    "MaleChauvinism" = "Male Leader", 
+    "Age_std" = "Age", 
+    "EconGrievanceProspInd" = "Economic Future Fear", 
+    "Education" = "Education", 
+    "FamIncome_std" = "Income", 
+    "Capital" = "Capital", 
     # Interaction terms
-    "Age_std:Male" = "Age × Male",
-    "Male:Age_std" = "Age × Male", # To catch if named this way
+    "Age_std:Male" = "Age × Female", # Changed to Female
+    "Male:Age_std" = "Age × Female", # Changed to Female
     "Age_std:Religiosity" = "Age × Religiosity",
-    "Religiosity:Age_std" = "Age × Religiosity" # To catch if named this way
+    "Religiosity:Age_std" = "Age × Religiosity" 
   )
   
   # Create the plot
   plot <- ggplot(delta_matrix_values, aes(x = variables, y = mean)) +
     geom_point(size = 1, shape = 10) +
-    geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.25, size = .25) + # Consistent width
+    geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.25, size = .25) + 
     coord_flip() +
     geom_hline(yintercept = 0, color = "red", linetype = "dashed", size = 0.5) +
     facet_grid(category ~ ., scales = "free_y", space = "free_y") +
@@ -227,7 +228,7 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
 # Plot for Model 1
 plot_coefficients(endorse_object_model1, "Model 1 Original", "(Original Model)")
 # Plot for Model 2
-plot_coefficients(endorse_object_model2, "Model 2 Age_Male Interaction", "(with Age × Male Interaction)")
+plot_coefficients(endorse_object_model2, "Model 2 Age_Female Interaction", "(with Age × Female Interaction)") # Changed to Female
 # Plot for Model 3
 plot_coefficients(endorse_object_model3, "Model 3 Age_Religiosity Interaction", "(with Age × Religiosity Interaction)")
 
