@@ -184,22 +184,22 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
   # Define custom labels for variables
   custom_labels <- c(
     "Age_std" = "Age",
-    "Gender" = "Gender (Male/Female)",
+    "Gender" = "Male",
     "Education" = "Education",
     "Income_std" = "Income",
     "Religiosity" = "Religiosity",
-    "ChildHome" = "Child: Happy Home w/ Mom and Dad",
-    "GayPartner" = "Opposition: Gay Partner",
-    "DemonstrateTrad" = "Demonstrate for Traditional",
-    "MaleChauvinism" = "Male Political Leader",
+    "ChildHome" = "Child Mom Dad",
+    "GayPartner" = "Gay Partner",
+    "DemonstrateTrad" = "Mobilize Trad Fam",
+    "MaleChauvinism" = "Male Leader",
     "MaleJobs" = "Male Jobs",
-    "PolicyPolGrievance" = "Grievance: Gov. Satisfaction",
-    "EconGrievanceProspInd" = "Grievance: Economic Future Family", # Corrected here
-    "Ukraine" = "Opposition: Ukraine Refugee Neighbor",
+    "PolicyPolGrievance" = "Gov. Dissatisfaction",
+    "EconGrievanceProspInd" = "Economic Future", 
+    "Ukraine" = "Ukraine Refugee",
     "NatPride" = "National Pride",
-    "Ideology" = "Political Ideology (L-R)",
-    "Age_std:Gender" = "Standardized Age × Gender Interaction",
-    "Age_std:Religiosity" = "Standardized Age × Religiosity Interaction"
+    "Ideology" = "L-R Ideology",
+    "Age_std:Gender" = "Age × Gender",
+    "Age_std:Religiosity" = "Age × Religiosity"
   )
   
   # Create the plot

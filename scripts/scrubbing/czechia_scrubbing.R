@@ -98,7 +98,8 @@ czech_vars <- czech_vars %>%
   ))
 
 czech_vars <- czech_vars %>%
-  mutate(across(-c("Religiosity", "Age", "EconGrievanceProspInd", "Ideology", "Education", "Income", "Gender", "PolicyPolGrievance", "DemonstrateTrad"),
+  mutate(across(-c("Religiosity", "Age", "EconGrievanceProspInd", "Ideology", "Education", "Income", "Gender", "PolicyPolGrievance", "DemonstrateTrad",
+                   "GayPartner", "ChildHome", "MaleChauvinism", "MaleJobs"),
                 ~ recode(as.numeric(.x),
                          `1` = 4,
                          `4` = 1,
