@@ -198,7 +198,7 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
     "Education" = "Education",
     "Income_std" = "Income",
     "Married" = "Married",
-    "Capital" = "Capital", # Simplified from "Capital / Region (living in Capital City Budapest)"
+    "Capital" = "Rural", # Simplified from "Capital / Region (living in Capital City Budapest)"
     "Children" = "Number of Children",
     "ChildHome" = "Child Mom Dad", # Simplified from "Child (happy) Home with Mom and Dad"
     "GayPartner" = "Gay Partner", # Simplified from "Opposition: Gay Partner"
