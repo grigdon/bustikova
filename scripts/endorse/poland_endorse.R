@@ -138,8 +138,8 @@ ggsave("~/projects/bustikova/output/endorse/metro_plot/poland_acceptance_ratios.
 # Function to create and save coefficient plots
 plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
   # Get column names of delta matrix excluding the intercept
-  # Adjust regex to include Age_std, Income_std, and interactions
-  delta_cols <- colnames(endorse_object$delta)[grepl("^(ChildHome|Religiosity|GayPartner|EUPolGrievance|NationalPride|MaleChauvinism|Vote|Rural|Income_std|Age_std|DemonstrateTrad|Education|Gender|DemPolGrievance|Age_std:Gender|Age_std:Religiosity)", colnames(endorse_object$delta))]
+  # Updated regex to include all specified variables and interactions for Poland models
+  delta_cols <- colnames(endorse_object$delta)[grepl("^(ChildHome|Religiosity|GayPartner|EUPolGrievance|NationalPride|MaleChauvinism|Vote|Rural|Income_std|Age_std|DemonstrateTrad|Education|Gender|DemPolGrievance|Age_std:Gender|Religiosity:Age_std|Age_std:Religiosity)", colnames(endorse_object$delta))]
   
   # Create the dataframe using posterior samples
   delta_matrix_values <- data.frame(
@@ -164,51 +164,52 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
         variables %in% descriptives_socio_economic ~ "Descriptives Socio-Economic",
         variables %in% conservatism ~ "Conservatism",
         variables %in% performance_economy_and_government ~ "Performance: Economy and Government",
-        grepl("Age_std:Gender", variables) ~ "Interaction: Age × Male",
-        grepl("Age_std:Religiosity", variables) ~ "Interaction: Age × Religiosity",
-        TRUE ~ "Other" # Catch any variables not explicitly categorized
+        grepl("Age_std:Gender", variables) ~ "Interaction: Age × Female", # Label based on 'Gender' being 'Female'
+        grepl("Age_std:Religiosity|Religiosity:Age_std", variables) ~ "Interaction: Age × Religiosity", # Handle both naming conventions
+        TRUE ~ "Other" # Fallback for any variables not caught
       )
     )
   
   # Reorder variables within each category by mean
   delta_matrix_values <- delta_matrix_values %>%
     group_by(category) %>%
-    mutate(variables = fct_reorder(variables, mean)) %>%
+    mutate(variables = forcats::fct_reorder(variables, mean)) %>% # Explicitly use forcats::fct_reorder
     ungroup()
   
   # Reorder categories (ensure a consistent order)
   category_order <- c("Descriptives Socio-Economic",
                       "Conservatism",
                       "Performance: Economy and Government",
-                      "Interaction: Age × Male",
+                      "Interaction: Age × Female", # Reflects Gender label
                       "Interaction: Age × Religiosity",
                       "Other")
   delta_matrix_values$category <- factor(delta_matrix_values$category, levels = intersect(category_order, unique(delta_matrix_values$category)))
   
-  # Define custom labels for variables
+  # Define custom labels for variables (drawing inspiration from all scripts)
   custom_labels <- c(
-    "ChildHome" = "Child (happy) Home with Mom and Dad",
+    "ChildHome" = "Child Mom Dad", # Simplified
     "Religiosity" = "Religiosity",
-    "GayPartner" = "Opposition: Gay Partner",
-    "EUPolGrievance" = "Dissatisfaction Poland in EU",
+    "GayPartner" = "Gay Partner", # Simplified
+    "EUPolGrievance" = "EU Dissatisfaction", # Simplified from Poland specific
     "NationalPride" = "National Pride",
-    "MaleChauvinism" = "Male Political Leader",
-    "Vote" = "Vote PiS Vote Law and Justice", # Assuming 'Vote' refers to PiS vote based on context
-    "Rural" = "Urban", # Assuming 'Rural' is inverted to 'Urban' for labeling
+    "MaleChauvinism" = "Male Leader", # Simplified from "Male Political Leader"
+    "Vote" = "PiS Vote", # Based on image and context
+    "Rural" = "Rural", # Changed from 'Urban' assuming the variable is 'Rural'
     "Income_std" = "Income",
     "Age_std" = "Age",
-    "DemonstrateTrad" = "Demonstrate for Traditional Values",
+    "DemonstrateTrad" = "Mobilize Trad Fam", # Consistent with previous script
     "Education" = "Education",
-    "Gender" = "Male (Gender Male Female)",
-    "DemPolGrievance" = "Dissatisfaction with Democracy",
-    "Age_std:Gender" = "Standardized Age × Male Interaction",
-    "Age_std:Religiosity" = "Standardized Age × Religiosity Interaction"
+    "Gender" = "Female", # Based on image
+    "DemPolGrievance" = "Democracy Dissatisfaction", # Simplified
+    "Age_std:Gender" = "Age × Female", # Consistent with Gender label
+    "Age_std:Religiosity" = "Age × Religiosity",
+    "Religiosity:Age_std" = "Age × Religiosity" # To catch if named this way
   )
   
   # Create the plot
   plot <- ggplot(delta_matrix_values, aes(x = variables, y = mean)) +
     geom_point(size = 1, shape = 10) +
-    geom_errorbar(aes(ymin = lower, ymax = upper), width = 1, size = .25) +
+    geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.25, size = .25) + # Consistent width
     coord_flip() +
     geom_hline(yintercept = 0, color = "red", linetype = "dashed", size = 0.5) +
     facet_grid(category ~ ., scales = "free_y", space = "free_y") +
@@ -233,7 +234,7 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
 # Plot for Model 1
 plot_coefficients(endorse_object_model1, "Model 1 Original", "(Original Model)")
 # Plot for Model 2
-plot_coefficients(endorse_object_model2, "Model 2 Age_Gender Interaction", "(with Age × Male Interaction)")
+plot_coefficients(endorse_object_model2, "Model 2 Age_Gender Interaction", "(with Age × Female Interaction)")
 # Plot for Model 3
 plot_coefficients(endorse_object_model3, "Model 3 Age_Religiosity Interaction", "(with Age × Religiosity Interaction)")
 
@@ -241,7 +242,8 @@ plot_coefficients(endorse_object_model3, "Model 3 Age_Religiosity Interaction", 
 ######################################
 # Extract and standardize MCMC samples for Model 1 (as example for macro plot)
 # --------------------------------------
-# Extract MCMC samples for lambda and sigma²
+# Ensure endorse_object_model1 is defined and contains necessary lambda and x components.
+
 lambda_samples_m1 <- as.matrix(endorse_object_model1$lambda)
 sigma2_m1 <- (endorse_object_model1$x)^2  # Convert standard deviation to variance
 

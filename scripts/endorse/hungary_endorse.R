@@ -198,7 +198,7 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
     "Education" = "Education",
     "Income_std" = "Income",
     "Married" = "Married",
-    "Capital" = "Rural", # Simplified from "Capital / Region (living in Capital City Budapest)"
+    "Capital" = "Capital", # Simplified from "Capital / Region (living in Capital City Budapest)"
     "Children" = "Number of Children",
     "ChildHome" = "Child Mom Dad", # Simplified from "Child (happy) Home with Mom and Dad"
     "GayPartner" = "Gay Partner", # Simplified from "Opposition: Gay Partner"
@@ -206,7 +206,7 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
     "ChurchPolitics" = "Church in Politics",
     "Religiosity" = "Religiosity",
     "GovDissatisfaction" = "Gov. Dissatisfaction", # Consistent with previous script
-    "EconomicFuture" = "Economic Future", # Consistent with previous script
+    "EconomicFuture" = "Economic Future Fear", # Consistent with previous script
     "LawOrder" = "Law and Order", # Consistent with previous script
     "Fidesz_vote" = "Fidesz Vote",
     "Age_std:Gender" = "Age × Female", # Adjusted to match Gender label
