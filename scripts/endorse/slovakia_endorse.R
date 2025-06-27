@@ -131,8 +131,8 @@ ggsave("~/projects/bustikova/output/endorse/metro_plot/slovakia_acceptance_ratio
 # Function to create and save coefficient plots
 plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
   # Get column names of delta matrix excluding the intercept
-  # Adjust regex to include Age_std, FamIncome_std, and interactions
-  delta_cols <- colnames(endorse_object$delta)[grepl("^(Religiosity|ChildHome|GayFamily|DemonstrateTrad|NatPride|Male|MaleChauvinism|Age_std|EconGrievanceProspInd|Education|FamIncome_std|Capital|Age_std:Male|Age_std:Religiosity)", colnames(endorse_object$delta))]
+  # Updated regex to include all specified variables and interactions for Slovakia models
+  delta_cols <- colnames(endorse_object$delta)[grepl("^(Religiosity|ChildHome|GayFamily|DemonstrateTrad|NatPride|Male|MaleChauvinism|Age_std|EconGrievanceProspInd|Education|FamIncome_std|Capital|Age_std:Male|Religiosity:Age_std|Age_std:Religiosity)", colnames(endorse_object$delta))]
   
   # Create the dataframe using posterior samples
   delta_matrix_values <- data.frame(
@@ -157,16 +157,16 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
         variables %in% descriptives_socio_economic ~ "Descriptives Socio-Economic",
         variables %in% social_non_ethnic_conservatism ~ "Social (Non-Ethnic) Conservatism",
         variables %in% performance_economy_and_government ~ "Performance: Economy and Government",
-        grepl("Age_std:Male", variables) ~ "Interaction: Age × Male",
-        grepl("Age_std:Religiosity", variables) ~ "Interaction: Age × Religiosity",
-        TRUE ~ "Other" # Catch any variables not explicitly categorized
+        grepl("Age_std:Male|Male:Age_std", variables) ~ "Interaction: Age × Male", # Handle both naming conventions for Male interaction
+        grepl("Age_std:Religiosity|Religiosity:Age_std", variables) ~ "Interaction: Age × Religiosity", # Handle both naming conventions for Religiosity interaction
+        TRUE ~ "Other" # Fallback for any variables not caught
       )
     )
   
   # Reorder variables within each category by mean
   delta_matrix_values <- delta_matrix_values %>%
     group_by(category) %>%
-    mutate(variables = fct_reorder(variables, mean)) %>%
+    mutate(variables = forcats::fct_reorder(variables, mean)) %>% # Explicitly use forcats::fct_reorder
     ungroup()
   
   # Reorder categories (ensure a consistent order)
@@ -178,28 +178,31 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
                       "Other")
   delta_matrix_values$category <- factor(delta_matrix_values$category, levels = intersect(category_order, unique(delta_matrix_values$category)))
   
-  # Define custom labels for variables
+  # Define custom labels for variables (drawing inspiration from all scripts and image)
   custom_labels <- c(
     "Religiosity" = "Religiosity",
-    "ChildHome" = "Child (Happy) Home with Mom and Dad",
-    "GayFamily" = "Opposition: Gay Partner", # This corresponds to "Gay Partner" in the new list
-    "DemonstrateTrad" = "Demonstrate for Traditional",
-    "NatPride" = "National Pride",
-    "Male" = "Male (Gender Male/Female)", # This corresponds to "Male (Gender Male Female)"
-    "MaleChauvinism" = "Male Political Leader",
-    "Age_std" = "Age",
-    "EconGrievanceProspInd" = "Economic Hardship",
-    "Education" = "Education",
-    "FamIncome_std" = "Income",
-    "Capital" = "Capital / Region (living in Capital City Bratislava)",
-    "Age_std:Male" = "Standardized Age × Male Interaction",
-    "Age_std:Religiosity" = "Standardized Age × Religiosity Interaction"
+    "ChildHome" = "Child Mom Dad", # From image
+    "GayFamily" = "Gay Partner", # From image, assuming "Opposition: Gay Partner" implies just "Gay Partner" for label
+    "DemonstrateTrad" = "Mobilize Trad Fam", # From image/Czechia script
+    "NatPride" = "National Pride", # From image
+    "Male" = "Male", # From image
+    "MaleChauvinism" = "Male Leader", # From image
+    "Age_std" = "Age", # From image
+    "EconGrievanceProspInd" = "Economic Future", # From image/Czechia script
+    "Education" = "Education", # From image
+    "FamIncome_std" = "Income", # From image
+    "Capital" = "Capital", # From image
+    # Interaction terms
+    "Age_std:Male" = "Age × Male",
+    "Male:Age_std" = "Age × Male", # To catch if named this way
+    "Age_std:Religiosity" = "Age × Religiosity",
+    "Religiosity:Age_std" = "Age × Religiosity" # To catch if named this way
   )
   
   # Create the plot
   plot <- ggplot(delta_matrix_values, aes(x = variables, y = mean)) +
     geom_point(size = 1, shape = 10) +
-    geom_errorbar(aes(ymin = lower, ymax = upper), width = 1, size = .25) +
+    geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.25, size = .25) + # Consistent width
     coord_flip() +
     geom_hline(yintercept = 0, color = "red", linetype = "dashed", size = 0.5) +
     facet_grid(category ~ ., scales = "free_y", space = "free_y") +
@@ -232,7 +235,8 @@ plot_coefficients(endorse_object_model3, "Model 3 Age_Religiosity Interaction", 
 ######################################
 # Extract and standardize MCMC samples for Model 1 (as example for macro plot)
 # --------------------------------------
-# Extract MCMC samples for lambda and sigma²
+# Ensure endorse_object_model1 is defined and contains necessary lambda and x components.
+
 lambda_samples_m1 <- as.matrix(endorse_object_model1$lambda)
 sigma2_m1 <- (endorse_object_model1$x)^2  # Convert standard deviation to variance
 
