@@ -141,8 +141,8 @@ ggsave("~/projects/bustikova/output/endorse/metro_plot/hungary_acceptance_ratios
 # Function to create and save coefficient plots
 plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
   # Get column names of delta matrix excluding the intercept
-  # Updated regex to include Fidesz_vote
-  delta_cols <- colnames(endorse_object$delta)[grepl("^(ChildHome|ChurchPolitics|LawOrder|GayPartner|Religiosity|Children|MaleJobs|Age_std|Capital|Married|Income_std|Gender|EconomicFuture|Education|GovDissatisfaction|Fidesz_vote|Age_std:Gender|Age_std:Religiosity)", colnames(endorse_object$delta))]
+  # Updated regex to include all specified variables and interactions for Hungary models
+  delta_cols <- colnames(endorse_object$delta)[grepl("^(ChildHome|ChurchPolitics|LawOrder|GayPartner|Religiosity|Children|MaleJobs|Age_std|Capital|Married|Income_std|Gender|EconomicFuture|Education|GovDissatisfaction|Fidesz_vote|Age_std:Gender|Religiosity:Age_std|Age_std:Religiosity)", colnames(endorse_object$delta))]
   
   # Create the dataframe using posterior samples
   delta_matrix_values <- data.frame(
@@ -168,9 +168,9 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
         variables %in% descriptives_socio_economic ~ "Descriptives Socio-Economic",
         variables %in% conservatism ~ "Conservatism",
         variables %in% performance_economy_and_government ~ "Performance: Economy and Government",
-        variables %in% political_affiliation ~ "Political Affiliation", # New category for Fidesz_vote
+        variables %in% political_affiliation ~ "Political Affiliation",
         grepl("Age_std:Gender", variables) ~ "Interaction: Age × Gender",
-        grepl("Age_std:Religiosity", variables) ~ "Interaction: Age × Religiosity",
+        grepl("Age_std:Religiosity|Religiosity:Age_std", variables) ~ "Interaction: Age × Religiosity", # Handle both naming conventions for safety
         TRUE ~ "Other" # Catch any variables not explicitly categorized
       )
     )
@@ -178,45 +178,46 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
   # Reorder variables within each category by mean
   delta_matrix_values <- delta_matrix_values %>%
     group_by(category) %>%
-    mutate(variables = fct_reorder(variables, mean)) %>%
+    mutate(variables = forcats::fct_reorder(variables, mean)) %>% # Explicitly use forcats::fct_reorder
     ungroup()
   
   # Reorder categories (ensure a consistent order, adding new category)
   category_order <- c("Descriptives Socio-Economic",
                       "Conservatism",
                       "Performance: Economy and Government",
-                      "Political Affiliation", # Added new category
+                      "Political Affiliation",
                       "Interaction: Age × Gender",
                       "Interaction: Age × Religiosity",
                       "Other")
   delta_matrix_values$category <- factor(delta_matrix_values$category, levels = intersect(category_order, unique(delta_matrix_values$category)))
   
-  # Define custom labels for variables (added Fidesz_vote)
+  # Define custom labels for variables (drawing inspiration from both scripts)
   custom_labels <- c(
     "Age_std" = "Age",
-    "Gender" = "Male (Gender Male Female)",
+    "Gender" = "Female", # Assuming 'Gender' represents female, as in Czechia script
     "Education" = "Education",
     "Income_std" = "Income",
     "Married" = "Married",
-    "Capital" = "Capital / Region (living in Capital City Budapest)",
+    "Capital" = "Rural", # Simplified from "Capital / Region (living in Capital City Budapest)"
     "Children" = "Number of Children",
-    "ChildHome" = "Child (happy) Home with Mom and Dad",
-    "GayPartner" = "Opposition: Gay Partner",
+    "ChildHome" = "Child Mom Dad", # Simplified from "Child (happy) Home with Mom and Dad"
+    "GayPartner" = "Gay Partner", # Simplified from "Opposition: Gay Partner"
     "MaleJobs" = "Male Jobs",
     "ChurchPolitics" = "Church in Politics",
     "Religiosity" = "Religiosity",
-    "GovDissatisfaction" = "Dissatisfaction with Government",
-    "EconomicFuture" = "Economy worse off than two years ago",
-    "LawOrder" = "Law Order State",
-    "Fidesz_vote" = "Fidesz Vote", # Added Fidesz Vote
-    "Age_std:Gender" = "Standardized Age × Male (Gender Male Female) Interaction",
-    "Age_std:Religiosity" = "Standardized Age × Religiosity Interaction"
+    "GovDissatisfaction" = "Gov. Dissatisfaction", # Consistent with previous script
+    "EconomicFuture" = "Economic Future", # Consistent with previous script
+    "LawOrder" = "Law and Order", # Consistent with previous script
+    "Fidesz_vote" = "Fidesz Vote",
+    "Age_std:Gender" = "Age × Female", # Adjusted to match Gender label
+    "Religiosity:Age_std" = "Age × Religiosity", # To catch if named this way
+    "Age_std:Religiosity" = "Age × Religiosity" # To catch if named this way
   )
   
   # Create the plot
   plot <- ggplot(delta_matrix_values, aes(x = variables, y = mean)) +
     geom_point(size = 1, shape = 10) +
-    geom_errorbar(aes(ymin = lower, ymax = upper), width = 1, size = .25) +
+    geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.25, size = .25) + # Adjusted width for consistency
     coord_flip() +
     geom_hline(yintercept = 0, color = "red", linetype = "dashed", size = 0.5) +
     facet_grid(category ~ ., scales = "free_y", space = "free_y") +
@@ -251,7 +252,8 @@ plot_coefficients(endorse_object_model4, "Model 4 Fidesz_vote Covariate", "(with
 ######################################
 # Extract and standardize MCMC samples for Model 1 (as example for macro plot)
 # --------------------------------------
-# Extract MCMC samples for lambda and sigma²
+# Ensure endorse_object_model1 is defined and contains necessary lambda and x components.
+
 lambda_samples_m1 <- as.matrix(endorse_object_model1$lambda)
 sigma2_m1 <- (endorse_object_model1$x)^2  # Convert standard deviation to variance
 
