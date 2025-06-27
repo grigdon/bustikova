@@ -7,6 +7,22 @@ library(magick)
 library(ggplot2)
 library(patchwork)
 
+#----------------------------------
+# 1. Data Loading & Question Setup
+#----------------------------------
+# load raw data
+hungary_questions <- as_tibble(read_sav("~/projects/bustikova/data/raw_data/question/hungary_raw.sav"))
+
+hungary_questions <- hungary_questions %>% select(A6A_1, A6A_2, A6A_3,
+                                                  A6B_1, A6B_2, A6B_3)
+# Convert response columns to numeric then recode: 1->4, 4->1, 2->3, 3->2
+hungary_questions <- hungary_questions %>%
+  mutate(across(everything(), ~ as.numeric(.x))) %>%
+  mutate(across(everything(), ~ recode(.x,
+                                       `1` = 4,
+                                       `4` = 1,
+                                       `2` = 3,
+                                       `3` = 2)))
 #-------------------------
 # 2. Processing Covariates
 #-------------------------
@@ -16,100 +32,74 @@ data_path <- "~/projects/bustikova/data/raw_data/var/hungary_raw_data.dta"
 hungary_vars <- as_tibble(read_dta(data_path))
 
 hungary_vars <- hungary_vars %>% select(
-  settl1, gndr, yrbrn, educ, marital, 
-  q403, q404, A4_1, A4_2, A4_3,
-  A8_1, A8_2, A8_3, A8_4, A8_5, A8_6, A8_7,
-  A9_1, A9_2, A9_3, A9_4, A9_5, A9_6, A9_7, 
-  A9_8, A9_9, A9_10, A9_11, A9_12, A9_13
+  childhome, churchpolit, laworder, gaypartner, q418, children, 
+  malejobs, age, settl2, marital, income, gndr, ecgrproi, educ, A4_2, votefut
 )
 
 hungary_vars <- hungary_vars %>%
   rename(
-    Capital = settl1,
-    Gender = gndr,
-    Age = yrbrn,
-    Education = educ,
+    ChildHome = childhome,
+    ChurchPolitics = churchpolit,
+    LawOrder = laworder,
+    GayPartner = gaypartner,
+    Religiosity = q418,
+    Children = children,
+    MaleJobs = malejobs,
+    Age = age,
+    Capital = settl2,
     Married = marital,
-    PersonalIncome = q403,
-    FamilyIncome = q404,
-    DemGrievance= A4_1,
-    DemPolGrievance = A4_2, 
-    EUPolGrievance = A4_3,
-    RomaNeighbor = A8_1, 
-    RomaPartner = A8_2, 
-    GayNeighbor = A8_3, 
-    GayPartner = A8_4, 
-    ForeignNeighbor = A8_5, 
-    ForeignPartner = A8_6, 
-    UkraineNeighbor = A8_7,
-    NativeRights = A9_1,
-    StateEconomy = A9_2,
-    ChristainSchool = A9_3,
-    MaleChauvinism = A9_4,
-    LawOrder = A9_5, 
-    ChurchPolitics = A9_6, 
-    Abortion = A9_7,
-    TraditionalMarriage = A9_8,
-    SexBeforeMarriage = A9_9,
-    GayLesRights = A9_10,
-    ChildHome = A9_11, 
-    MaleJobs = A9_12,
-    NativeJobs = A9_13
+    Income = income,
+    Gender = gndr,
+    EconomicFuture = ecgrproi,
+    Education = educ,
+    GovDissatisfaction = A4_2,
+    Fidesz_vote = votefut
   )
 
-summary(hungary_vars)
+hungary_vars <- hungary_vars %>%
+  mutate(
+    Capital = na_if(Capital, "9"),
+    Capital = case_when(
+      Capital == "Budapest" ~ 0,
+      !is.na(Capital) ~ 1,
+      TRUE ~ NA_real_
+    )
+  )
 
 hungary_vars <- hungary_vars %>%
-  mutate(across(c(ChildHome, GayPartner, Religiosity, MaleChauvinism, MaleJobs,
-                  Ukraine, NatPride, PolicyPolGrievance, EconGrievanceProspInd,
-                  DemonstrateTrad),
-                ~na_if(., 9)))
+  mutate(
+    Married = recode(as.numeric(Married), `1` = 0, `2` = 1, `3` = 0, `4` = 0, `5` = 0, `6` = 0, `7` = 0, `8` = 0)
+  )
 
 hungary_vars <- hungary_vars %>%
-  mutate(Ideology = na_if(Ideology, 99))
-
-hungary_vars <- hungary_vars %>%
-  mutate(Income = na_if(Income, 8))
-
-hungary_vars <- hungary_vars %>%
-  mutate(Gender = recode(as.numeric(Gender),
-                         `1` = 0,
-                         `2` = 1))
-
-hungary_vars <- hungary_vars %>%
-  mutate(Income = case_when(
-    as.numeric(Income) == 7 ~ 0,
-    TRUE ~ as.numeric(Income)
-  ))
-
-hungary_vars <- hungary_vars %>%
-  mutate(across(-c("Religiosity", "Age", "EconGrievanceProspInd", "Ideology", "Education", "Income", "Gender", "PolicyPolGrievance", "DemonstrateTrad"),
-                ~ recode(as.numeric(.x),
-                         `1` = 4,
-                         `4` = 1,
-                         `2` = 3,
-                         `3` = 2)))
+  mutate(
+    Income = as.numeric(Income),
+    Gender = recode(as.numeric(Gender), `1` = 0, `2` = 1),
+    Fidesz_vote = recode(as.numeric(Fidesz_vote), `1` = 1, `2` = 0)
+  )
 
 levels_4_pt <- c("1", "2", "3", "4")
 levels_5_pt <- c("1", "2", "3", "4", "5")
 levels_gender <- c("0", "1")
 levels_education <- as.character(1:10)
 
+summary(hungary_vars)
+
 hungary_vars <- hungary_vars %>%
   mutate(
     ChildHome = factor(ChildHome, levels = levels_4_pt),
+    ChurchPolitics = factor(ChurchPolitics, levels = levels_4_pt),
+    LawOrder = factor(LawOrder, levels = levels_4_pt),
     GayPartner = factor(GayPartner, levels = levels_4_pt),
     Religiosity = factor(Religiosity, levels = levels_5_pt),
-    MaleChauvinism = factor(MaleChauvinism, levels = levels_4_pt),
     MaleJobs = factor(MaleJobs, levels = levels_4_pt),
-    Ukraine = factor(Ukraine, levels = levels_4_pt),
-    NatPride = factor(NatPride, levels = levels_4_pt),
-    PolicyPolGrievance = factor(PolicyPolGrievance, levels = levels_4_pt),
-    EconGrievanceProspInd = factor(EconGrievanceProspInd, levels = levels_5_pt),
-    DemonstrateTrad = factor(DemonstrateTrad, levels = levels_4_pt),
-    Ideology = factor(Ideology, levels = levels_5_pt),
+    Capital = factor(Capital, levels = c("0", "1")),
+    Married = factor(Married, levels = c("0", "1")),
+    Gender = factor(Gender, levels = levels_gender),
+    EconomicFuture = factor(EconomicFuture, levels = levels_5_pt),
     Education = factor(Education, levels = levels_education),
-    Gender = factor(Gender, levels = levels_gender)
+    GovDissatisfaction = factor(GovDissatisfaction, levels = levels_4_pt),
+    Fidesz_vote = factor(Fidesz_vote, levels = c("0", "1"))
   )
 
 hungary_vars <- hungary_vars %>%
@@ -242,8 +232,24 @@ for (col_name in names(hungary_vars_for_imputation)) {
 
 final_dataset <- bind_cols(hungary_questions, imputed_hungary_vars_mf)
 
-# saves final data to 'PATH'
+new_interaction_vars <- final_dataset %>%
+  mutate(
+    Gender_numeric = as.numeric(as.character(Gender)),
+    Religiosity_numeric = as.numeric(as.character(Religiosity))
+  ) %>%
+  transmute(
+    Age_Male_numeric = Age * Gender_numeric,
+    Religiosity_Male_numeric = Religiosity_numeric * Gender_numeric
+  )
+
+new_interaction_vars$`AgeMale` <- as.numeric(new_interaction_vars$Age_Male_numeric)
+new_interaction_vars$`ReligiosityMale` <- as.factor(new_interaction_vars$Religiosity_Male_numeric)
+
+new_interaction_vars <- new_interaction_vars %>%
+  select(`AgeMale`, `ReligiosityMale`)
+
+final_dataset <- bind_cols(final_dataset, new_interaction_vars)
+
 write_sav(final_dataset, "~/projects/bustikova/data/scrubbed_data/hungary_scrubbed.sav")
 
-# cleans up global environment
 rm(list = ls())

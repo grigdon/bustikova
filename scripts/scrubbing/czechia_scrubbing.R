@@ -257,8 +257,24 @@ for (col_name in names(czech_vars_for_imputation)) {
 
 final_dataset <- bind_cols(czech_questions, imputed_czech_vars_mf)
 
-# saves final data to 'PATH'
+new_interaction_vars <- final_dataset %>%
+  mutate(
+    Gender_numeric = as.numeric(as.character(Gender)),
+    Religiosity_numeric = as.numeric(as.character(Religiosity))
+  ) %>%
+  transmute(
+    Age_Male_numeric = Age * Gender_numeric,
+    Religiosity_Male_numeric = Religiosity_numeric * Gender_numeric
+  )
+
+new_interaction_vars$`AgeMale` <- as.numeric(new_interaction_vars$Age_Male_numeric)
+new_interaction_vars$`ReligiosityMale` <- as.factor(new_interaction_vars$Religiosity_Male_numeric)
+
+new_interaction_vars <- new_interaction_vars %>%
+  select(`AgeMale`, `ReligiosityMale`)
+
+final_dataset <- bind_cols(final_dataset, new_interaction_vars)
+
 write_sav(final_dataset, "~/projects/bustikova/data/scrubbed_data/czechia_scrubbed.sav")
 
-# cleans up global environment
 rm(list = ls())

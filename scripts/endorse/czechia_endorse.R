@@ -1,4 +1,4 @@
-# library(endorse)
+library(endorse)
 library(haven)
 library(ggpubr)
 library(missForest)
@@ -11,62 +11,98 @@ library(tidyr)
 library(Cairo)
 
 #====================================================
-# 1. Data Loading and Initial Processing for Czechia
+# 1. Data Loading and Initial Processing
 #====================================================
 
 CZdata <- read_sav("~/projects/bustikova/data/scrubbed_data/czechia_scrubbed.sav")
 
+summary(CZdata)
+
 # Define questions for the endorsement experiment
-questions <- c("Control_A", "Control_B", "Control_C", 
+questions <- c("Control_A", "Control_B", "Control_C",
                "Experimental_A", "Experimental_B", "Experimental_C")
 
 # Select relevant columns for endorsement analysis
 data_cz_questions <- CZdata[questions]
 
-# Define vars to keep 
-vars <- c("Male", "Age", "Education", "Capital", "IdeologyLR", "Income", "FamIncome", "DemPolGrievance", "PolicyPolGrievance",
-          "EconGrievanceRetro", "EconGrievanceProspInd", "EconGrievanceProspAgg", "GayNeighbor", "GayFamily", "ForNeighbor",
-          "ForPartner", "Ukraine", "NativeJobs", "NativeRights", "Religiosity", "VoteFarRight", "DemonstrateNational")
+# Define vars to keep based on the provided list and summary(CZdata)
+# These are the actual column names from summary(CZdata)
+vars_to_keep <- c("ChildHome", "GayPartner", "Religiosity", "MaleChauvinism",
+                  "Age", "MaleJobs", "Ukraine", "NatPride",
+                  "PolicyPolGrievance", "EconGrievanceProspInd", # Corrected here
+                  "DemonstrateTrad", "Ideology", "Education", "Gender", "Income")
 
-# Subset and recode variables
-data_cz_vars <- CZdata[vars]
+# Subset variables
+data_cz_vars <- CZdata[vars_to_keep]
 
-# Merge the questions and standardized variables datasets
+# Merge the questions and variables datasets
 data_cz <- bind_cols(data_cz_questions, data_cz_vars)
 
+# Standardize 'Age' and 'Income'
+# Using scale() function for standardization (mean=0, sd=1)
+data_cz$Age_std <- scale(data_cz$Age)
+data_cz$Income_std <- scale(data_cz$Income)
+
 # Create named list for response questions
-Y <- list(Q1 = c("Control_A", "Experimental_A"), 
-          Q2 = c("Control_B", "Experimental_B"), 
+Y <- list(Q1 = c("Control_A", "Experimental_A"),
+          Q2 = c("Control_B", "Experimental_B"),
           Q3 = c("Control_C", "Experimental_C"))
 
 #====================================================
-# 2. Creating the endorse object
+# 2. Creating endorse objects for three models
 #====================================================
 
-# Creating an endorse object, excluding all covariates that are in the set { traditionalism }
-
-endorse_object <- endorse(Y = Y, 
-                          data = data_cz,
-                          identical.lambda = FALSE,
-                          covariates = TRUE,
-                          prop = 0.008,
-                          formula.indiv = formula( ~ Male + Age + Education + Capital + IdeologyLR + Income + FamIncome + DemPolGrievance +
-                                                     PolicyPolGrievance + EconGrievanceRetro + EconGrievanceProspInd + EconGrievanceProspAgg +
-                                                     GayNeighbor + GayFamily + ForNeighbor + ForPartner + Ukraine + NativeJobs + NativeRights + 
-                                                     Religiosity + DemonstrateNational + VoteFarRight
-                          ),
-                          omega2.out = TRUE,
-                          hierarchical = FALSE
+# Model 1: Original model with all main effects (using standardized Age and Income)
+endorse_object_model1 <- endorse(Y = Y,
+                                 data = data_cz,
+                                 identical.lambda = FALSE,
+                                 covariates = TRUE,
+                                 prop = 0.008,
+                                 formula.indiv = formula( ~ ChildHome + GayPartner + Religiosity + MaleChauvinism +
+                                                            Age_std + MaleJobs + Ukraine + NatPride + PolicyPolGrievance +
+                                                            EconGrievanceProspInd + DemonstrateTrad + Ideology + 
+                                                            Education + Gender + Income_std),
+                                 omega2.out = TRUE,
+                                 hierarchical = FALSE
 )
 
+# Model 2: Interaction Age * Gender (using standardized Age)
+endorse_object_model2 <- endorse(Y = Y,
+                                 data = data_cz,
+                                 identical.lambda = FALSE,
+                                 covariates = TRUE,
+                                 prop = 0.008,
+                                 formula.indiv = formula( ~ ChildHome + GayPartner + Religiosity + MaleChauvinism +
+                                                            Age_std + MaleJobs + Ukraine + NatPride + PolicyPolGrievance +
+                                                            EconGrievanceProspInd + DemonstrateTrad + Ideology + 
+                                                            Education + Gender + Income_std + Age_std*Gender),
+                                 omega2.out = TRUE,
+                                 hierarchical = FALSE
+)
+
+# Model 3: Interaction Age * Religiosity (using standardized Age)
+endorse_object_model3 <- endorse(Y = Y,
+                                 data = data_cz,
+                                 identical.lambda = FALSE,
+                                 covariates = TRUE,
+                                 prop = 0.008,
+                                 formula.indiv = formula( ~ ChildHome + GayPartner + Religiosity + MaleChauvinism +
+                                                            Age_std + MaleJobs + Ukraine + NatPride + PolicyPolGrievance +
+                                                            EconGrievanceProspInd + DemonstrateTrad + Ideology + # Corrected here
+                                                            Education + Gender + Income_std + Age_std*Religiosity),
+                                 omega2.out = TRUE,
+                                 hierarchical = FALSE
+)
+
+
 #====================================================
-# 2.5 Output the acceptance ratio for each question
+# 2.5 Output the acceptance ratio for each question (for Model 1 as example)
 #====================================================
 
-# Extract acceptance ratios from the endorse object
+# Extract acceptance ratios from the endorse object (using Model 1 for this example)
 acceptance_ratios <- data.frame(
   Question = paste("Question", 1:3),
-  Ratio = endorse_object$accept.ratio
+  Ratio = endorse_object_model1$accept.ratio
 )
 
 # Create a bar plot of acceptance ratios
@@ -75,142 +111,154 @@ acceptance_plot <- ggplot(acceptance_ratios, aes(x = Question, y = Ratio)) +
   geom_text(aes(label = sprintf("%.3f", Ratio)), vjust = -0.5, size = 4) +
   scale_y_continuous(limits = c(0, 1.0), breaks = seq(0, 1, by = 0.1)) +
   labs(
-    title = "Czechia: Metropolis-Hastings Acceptance Ratios by Question",
-    x = NULL,
+    title = "Metropolis-Hastings Acceptance Ratios for Endorsement Model (Model 1)",
+    x = "Question",
     y = "Acceptance Ratio"
   ) +
   theme_classic() +
   theme(
-    plot.title = element_text(hjust = 0.5, face = "bold"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
     axis.text = element_text(size = 12),
     axis.title = element_text(size = 12, face = "bold")
   )
 
-# Save the plot
-ggsave("~/projects/bustikova/output/endorse/metro_plot/czechia_acceptance_ratios.pdf", 
+# Save the plot as PNG
+ggsave("~/projects/bustikova/output/endorse/metro_plot/czechia_acceptance_ratios.png",
        acceptance_plot, width = 8, height = 6)
 
+
 #====================================================
-# 3. Plotting coefficient plots from the delta matrix
+# 3. Plotting coefficient plots from the delta matrix for each model
 #====================================================
 
-# Create the dataframe using posterior samples
-delta_matrix_values <- data.frame(
-  mean = apply(endorse_object$delta[, 2:23], 2, mean),
-  lower = apply(endorse_object$delta[, 2:23], 2, quantile, 0.025),
-  upper = apply(endorse_object$delta[, 2:23], 2, quantile, 0.975)
-)
-
-# Add variable names and categories
-delta_matrix_values$variables <- colnames(endorse_object$delta)[2:23]
-delta_matrix_values$category <- NA
-
-# Define categories
-ses_demographics <- c("Age", "Male", "Education", "Capital", "IdeologyLR", "Income", "FamIncome", "Religiosity")
-political_economic_grievances <- c("DemPolGrievance", "PolicyPolGrievance", "EconGrievanceRetro", "EconGrievanceProspInd", "EconGrievanceProspAgg")
-nationalism <- c( "NativeRights", "NativeJobs", "VoteFarRight", "DemonstrateNational")
-boundary_maintenance <- c("GayNeighbor", "GayFamily", "ForNeighbor", "ForPartner", "Ukraine")
-
-# Assign categories
-delta_matrix_values <- delta_matrix_values %>%
-  mutate(
-    category = case_when(
-      variables %in% ses_demographics ~ "SES Demographics",
-      variables %in% political_economic_grievances ~ "Political & Economic Grievances",
-      variables %in% nationalism ~ "Nationalism",
-      variables %in% boundary_maintenance ~ "Boundary Maintenance & Prejudice"
-    )
+# Function to create and save coefficient plots
+plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
+  # Get column names of delta matrix excluding the intercept
+  # Adjust regex to include Age_std, Income_std, and interactions
+  delta_cols <- colnames(endorse_object$delta)[grepl("^(ChildHome|GayPartner|Religiosity|MaleChauvinism|Age_std|MaleJobs|Ukraine|NatPride|PolicyPolGrievance|EconGrievanceProspInd|DemonstrateTrad|Ideology|Education|Gender|Income_std|Age_std:Gender|Age_std:Religiosity)", colnames(endorse_object$delta))] # Corrected here
+  
+  # Create the dataframe using posterior samples
+  delta_matrix_values <- data.frame(
+    mean = apply(endorse_object$delta[, delta_cols], 2, mean),
+    lower = apply(endorse_object$delta[, delta_cols], 2, quantile, 0.025),
+    upper = apply(endorse_object$delta[, delta_cols], 2, quantile, 0.975)
   )
+  
+  # Add variable names and categories
+  delta_matrix_values$variables <- rownames(delta_matrix_values) # Use rownames for variables
+  delta_matrix_values$category <- NA
+  
+  # Define categories based on your provided groups
+  descriptives_socio_economic <- c("Age_std", "Gender", "Education", "Income_std", "Religiosity")
+  conservatism <- c("ChildHome", "GayPartner", "DemonstrateTrad", "MaleChauvinism", "MaleJobs")
+  performance_economy_and_government <- c("PolicyPolGrievance", "EconGrievanceProspInd", "Ukraine", "NatPride", "Ideology") # Corrected here
+  
+  # Assign categories
+  delta_matrix_values <- delta_matrix_values %>%
+    mutate(
+      category = case_when(
+        variables %in% descriptives_socio_economic ~ "Descriptives Socio-Economic",
+        variables %in% conservatism ~ "Conservatism",
+        variables %in% performance_economy_and_government ~ "Performance: Economy and Government",
+        grepl("Age_std:Gender", variables) ~ "Interaction: Age × Gender",
+        grepl("Age_std:Religiosity", variables) ~ "Interaction: Age × Religiosity",
+        TRUE ~ "Other" # Catch any variables not explicitly categorized
+      )
+    )
+  
+  # Reorder variables within each category by mean
+  delta_matrix_values <- delta_matrix_values %>%
+    group_by(category) %>%
+    mutate(variables = fct_reorder(variables, mean)) %>%
+    ungroup()
+  
+  # Reorder categories (ensure a consistent order)
+  category_order <- c("Descriptives Socio-Economic",
+                      "Conservatism",
+                      "Performance: Economy and Government",
+                      "Interaction: Age × Gender",
+                      "Interaction: Age × Religiosity",
+                      "Other")
+  delta_matrix_values$category <- factor(delta_matrix_values$category, levels = intersect(category_order, unique(delta_matrix_values$category)))
+  
+  # Define custom labels for variables
+  custom_labels <- c(
+    "Age_std" = "Age",
+    "Gender" = "Gender (Male/Female)",
+    "Education" = "Education",
+    "Income_std" = "Income",
+    "Religiosity" = "Religiosity",
+    "ChildHome" = "Child: Happy Home w/ Mom and Dad",
+    "GayPartner" = "Opposition: Gay Partner",
+    "DemonstrateTrad" = "Demonstrate for Traditional",
+    "MaleChauvinism" = "Male Political Leader",
+    "MaleJobs" = "Male Jobs",
+    "PolicyPolGrievance" = "Grievance: Gov. Satisfaction",
+    "EconGrievanceProspInd" = "Grievance: Economic Future Family", # Corrected here
+    "Ukraine" = "Opposition: Ukraine Refugee Neighbor",
+    "NatPride" = "National Pride",
+    "Ideology" = "Political Ideology (L-R)",
+    "Age_std:Gender" = "Standardized Age × Gender Interaction",
+    "Age_std:Religiosity" = "Standardized Age × Religiosity Interaction"
+  )
+  
+  # Create the plot
+  plot <- ggplot(delta_matrix_values, aes(x = variables, y = mean)) +
+    geom_point(size = 1, shape = 10) +
+    geom_errorbar(aes(ymin = lower, ymax = upper), width = 1, size = .25) +
+    coord_flip() +
+    geom_hline(yintercept = 0, color = "red", linetype = "dashed", size = 0.5) +
+    facet_grid(category ~ ., scales = "free_y", space = "free_y") +
+    scale_x_discrete(labels = custom_labels) +
+    theme_classic() +
+    ggtitle(paste("Czechia: Posterior Coefficient Estimates ", plot_title_suffix, sep = "")) +
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+      axis.text.y = element_text(size = 10),
+      axis.text.x = element_text(size = 10),
+      strip.text.y = element_text(angle = 0, hjust = 0, face = "bold"),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.border = element_blank()
+    ) +
+    labs(x = NULL, y = "Coefficient Estimate")
+  
+  # Save to PNG
+  ggsave(paste0("~/projects/bustikova/output/endorse/coef_plot/czechia_coef_plot_", tolower(gsub(" ", "_", model_name)), ".png"), plot, width = 12, height = 10)
+}
 
-# Reorder variables within each category by mean
-delta_matrix_values <- delta_matrix_values %>%
-  group_by(category) %>%
-  mutate(variables = fct_reorder(variables, mean)) %>%
-  ungroup()
+# Plot for Model 1
+plot_coefficients(endorse_object_model1, "Model 1 Original", "(Original Model)")
+# Plot for Model 2
+plot_coefficients(endorse_object_model2, "Model 2 Age_Gender Interaction", "(with Age × Gender Interaction)")
+# Plot for Model 3
+plot_coefficients(endorse_object_model3, "Model 3 Age_Religiosity Interaction", "(with Age × Religiosity Interaction)")
 
-# Reorder categories
-category_order <- c(
-  "SES Demographics", 
-  "Political & Economic Grievances", 
-  "Nationalism", 
-  "Boundary Maintenance & Prejudice"
-)
-delta_matrix_values$category <- factor(delta_matrix_values$category, levels = category_order)
-
-# Define custom labels for variables
-custom_labels <- c(
-  "Age" = "Age",
-  "Male" = "Male",
-  "Education" = "Education",
-  "Capital" = "Capital",
-  "IdeologyLR" = "Political Ideology",
-  "Income" = "Personal Income",
-  "FamIncome" = "Family Income",
-  "DemPolGrievance" = "Political Grievance (Democracy)",
-  "PolicyPolGrievance" = "Political Grievance (Policy)",
-  "EconGrievanceRetro" = "Economic Grievance (Retro)",
-  "EconGrievanceProspInd" = "Economic Grievance (Prospective-Ind)",
-  "EconGrievanceProspAgg" = "Economic Grievance (Prospective-Agg)",
-  "NativeRights" = "Native Rights",
-  "NativeJobs" = "Native Jobs",
-  "VoteFarRight" = "Far Right Voter",
-  "Religiosity" = "Religiosity",
-  "GayNeighbor" = "Anti-Gay Neighbor",
-  "GayFamily" = "Anti-Gay Family",
-  "ForNeighbor" = "Anti-Foreigner Neighbor",
-  "ForPartner" = "Anti-Foreigner Partner",
-  "Ukraine" = "Anti-Ukrainian Refugee",
-  "DemonstrateNational" = "Demonstrated for National Values"
-)
-
-# Create the plot
-plot <- ggplot(delta_matrix_values, aes(x = variables, y = mean)) +
-  geom_point(size = 1, shape = 10) + 
-  geom_errorbar(aes(ymin = lower, ymax = upper), width = 1, size = .25) + 
-  coord_flip() + 
-  geom_hline(yintercept = 0, color = "red", linetype = "dashed", size = 0.5) + 
-  facet_grid(category ~ ., scales = "free_y", space = "free_y") +
-  scale_x_discrete(labels = custom_labels) +
-  theme_classic() +
-  ggtitle("Czechia: Coefficient Estimates by Explanatory Variable") + 
-  theme(
-    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
-    axis.text.y = element_text(size = 10),
-    axis.text.x = element_text(size = 10),
-    strip.text.y = element_text(angle = 0, hjust = 0, face = "bold"),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.border = element_blank()
-  ) +
-  labs(x = NULL, y = "Coefficient Estimate")
-
-# Save to PDF
-ggsave("~/projects/bustikova/output/endorse/coef_plot/czechia_coef_plot.pdf", plot, width = 12, height = 10)
 
 ######################################
-# Extract and standardize MCMC samples
+# Extract and standardize MCMC samples for Model 1 (as example for macro plot)
 # --------------------------------------
 # Extract MCMC samples for lambda and sigma²
-lambda_samples <- as.matrix(endorse_object$lambda)
-sigma2 <- (endorse_object$x)^2  # Convert standard deviation to variance
+lambda_samples_m1 <- as.matrix(endorse_object_model1$lambda)
+sigma2_m1 <- (endorse_object_model1$x)^2  # Convert standard deviation to variance
 
 # Calculate the row-wise average of the three lambda parameters
-avg_lambda <- (lambda_samples[, "(Intercept).1.1"] + 
-                 lambda_samples[, "(Intercept).2.1"] + 
-                 lambda_samples[, "(Intercept).3.1"]) / 3
+avg_lambda_m1 <- (lambda_samples_m1[, "(Intercept).1.1"] +
+                    lambda_samples_m1[, "(Intercept).2.1"] +
+                    lambda_samples_m1[, "(Intercept).3.1"]) / 3
 
 # Include this average in the lambda_std list
-lambda_std <- list(
-  q1 = lambda_samples[, "(Intercept).1.1"] / sigma2,
-  q2 = lambda_samples[, "(Intercept).2.1"] / sigma2,
-  q3 = lambda_samples[, "(Intercept).3.1"] / sigma2,
-  average = avg_lambda / sigma2  # Standardize the average lambda just like the others
+lambda_std_m1 <- list(
+  q1 = lambda_samples_m1[, "(Intercept).1.1"] / sigma2_m1,
+  q2 = lambda_samples_m1[, "(Intercept).2.1"] / sigma2_m1,
+  q3 = lambda_samples_m1[, "(Intercept).3.1"] / sigma2_m1,
+  average = avg_lambda_m1 / sigma2_m1 # Standardize the average lambda just like the others
 )
 
 # Calculate summary statistics
 # --------------------------------------
 # Calculate mean and confidence intervals for each question
-question_stats <- lapply(lambda_std, function(x) {
+question_stats_m1 <- lapply(lambda_std_m1, function(x) {
   list(
     mean = mean(x),
     ci = quantile(x, probs = c(0.025, 0.975))
@@ -219,30 +267,20 @@ question_stats <- lapply(lambda_std, function(x) {
 
 # Create visualizations
 # --------------------------------------
-library(ggplot2)
-library(reshape2)
-library(extrafont)  # For professional fonts
-library(gridExtra)  # For adding table below plot
-
-# Load additional fonts if available
-# font_import()
-# loadfonts(device = "win")  # Adjust for your OS
-
 # Create dataframe in long format with average
-box_data_long <- data.frame(
-  Question = factor(rep(c("Question A", "Question B", "Question C", "Average"), 
-                        times = c(length(lambda_std$q1), length(lambda_std$q2), 
-                                  length(lambda_std$q3), length(lambda_std$average))),
+box_data_long_m1 <- data.frame(
+  Question = factor(rep(c("Question A", "Question B", "Question C", "Average"),
+                        times = c(length(lambda_std_m1$q1), length(lambda_std_m1$q2),
+                                  length(lambda_std_m1$q3), length(lambda_std_m1$average))),
                     levels = c("Question A", "Question B", "Question C", "Average")),
-  Support = c(lambda_std$q1, lambda_std$q2, lambda_std$q3, lambda_std$average)
+  Support = c(lambda_std_m1$q1, lambda_std_m1$q2, lambda_std_m1$q3, lambda_std_m1$average)
 )
 
 # Set a professional color palette suitable for publication
-# Using a colorblind-friendly palette
 journal_colors <- c("#0072B2", "#D55E00", "#009E73", "#CC79A7")
 
 # Create publication-quality box plot
-box_plot <- ggplot(box_data_long, aes(x = Question, y = Support, fill = Question)) +
+box_plot_m1 <- ggplot(box_data_long_m1, aes(x = Question, y = Support, fill = Question)) +
   geom_boxplot(
     alpha = 0.85,
     outlier.shape = 21,
@@ -253,15 +291,12 @@ box_plot <- ggplot(box_data_long, aes(x = Question, y = Support, fill = Question
     width = 0.6,
     lwd = 0.6
   ) +
-  # Add horizontal reference line at 0http://127.0.0.1:33439/graphics/11e2db3c-b487-4933-abbc-13eaaa6d06f1.png
   geom_hline(yintercept = 0, linetype = "dashed", color = "gray50", size = 0.5) +
-  # Fixed y-axis limits as requested
   ylim(-1.5, 1.5) +
-  # Labels
   labs(
-    title = "Czechia: Standardized Support by Question",
+    title = "Czechia: Standardized Support by Question (Model 1)",
     subtitle = "Standardized posterior distributions across survey questions",
-    x = "",  # No x-axis label needed
+    x = "",
     y = "Standardized Support (λ / σ²)",
     caption = "Note: Boxes represent interquartile range; whiskers extend to 1.5 x IQR"
   ) +
@@ -282,28 +317,11 @@ box_plot <- ggplot(box_data_long, aes(x = Question, y = Support, fill = Question
     plot.margin = margin(t = 20, r = 25, b = 20, l = 25)
   )
 
-# Create a table with summary statistics for display below the plot
-stats_table <- data.frame(
-  Question = c("Question A", "Question B", "Question C", "Average"),
-  Mean = sapply(question_stats, function(x) round(x$mean, 3)),
-  Lower_CI = sapply(question_stats, function(x) round(x$ci[1], 3)),
-  Upper_CI = sapply(question_stats, function(x) round(x$ci[2], 3))
-)
-
-# Format table for display
-table_theme <- ttheme_minimal(
-  core = list(fg_params = list(hjust = 1, x = 0.9, fontface = "plain"),
-              bg_params = list(fill = c("white", "gray95"))),
-  colhead = list(fg_params = list(fontface = "bold", hjust = 1, x = 0.9),
-                 bg_params = list(fill = "white")),
-  rowhead = list(fg_params = list(hjust = 0, x = 0.1)))
-
-# save the plot
-
+# Save the plot as PNG
 ggsave(
-  filename = "~/projects/bustikova/output/endorse/macro_plot/czechia_macro.pdf",
-  plot = box_plot,
-  device = Cairo::CairoPDF,
+  filename = "~/projects/bustikova/output/endorse/macro_plot/czechia_macro_model1.png",
+  plot = box_plot_m1,
+  device = "png",
   width = 8,
   height = 6
 )
