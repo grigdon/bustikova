@@ -134,8 +134,8 @@ ggsave("~/projects/bustikova/output/endorse/metro_plot/czechia_acceptance_ratios
 # Function to create and save coefficient plots
 plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
   # Get column names of delta matrix excluding the intercept
-  # Adjust regex to include Age_std, Income_std, and interactions
-  delta_cols <- colnames(endorse_object$delta)[grepl("^(ChildHome|GayPartner|Religiosity|MaleChauvinism|Age_std|MaleJobs|Ukraine|NatPride|PolicyPolGrievance|EconGrievanceProspInd|DemonstrateTrad|Ideology|Education|Gender|Income_std|Age_std:Gender|Age_std:Religiosity)", colnames(endorse_object$delta))] # Corrected here
+  # Adjust regex to include all specified main effects and interactions
+  delta_cols <- colnames(endorse_object$delta)[grepl("^(ChildHome|GayPartner|Religiosity|MaleChauvinism|Age_std|MaleJobs|Ukraine|NatPride|PolicyPolGrievance|EconGrievanceProspInd|DemonstrateTrad|Ideology|Education|Gender|Income_std|Age_std:Gender|Religiosity:Age_std)", colnames(endorse_object$delta))]
   
   # Create the dataframe using posterior samples
   delta_matrix_values <- data.frame(
@@ -151,7 +151,7 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
   # Define categories based on your provided groups
   descriptives_socio_economic <- c("Age_std", "Gender", "Education", "Income_std", "Religiosity")
   conservatism <- c("ChildHome", "GayPartner", "DemonstrateTrad", "MaleChauvinism", "MaleJobs")
-  performance_economy_and_government <- c("PolicyPolGrievance", "EconGrievanceProspInd", "Ukraine", "NatPride", "Ideology") # Corrected here
+  performance_economy_and_government <- c("PolicyPolGrievance", "EconGrievanceProspInd", "Ukraine", "NatPride", "Ideology")
   
   # Assign categories
   delta_matrix_values <- delta_matrix_values %>%
@@ -161,15 +161,15 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
         variables %in% conservatism ~ "Conservatism",
         variables %in% performance_economy_and_government ~ "Performance: Economy and Government",
         grepl("Age_std:Gender", variables) ~ "Interaction: Age × Gender",
-        grepl("Age_std:Religiosity", variables) ~ "Interaction: Age × Religiosity",
-        TRUE ~ "Other" # Catch any variables not explicitly categorized
+        grepl("Religiosity:Age_std", variables) ~ "Interaction: Age × Religiosity",
+        TRUE ~ "Uncategorized" # Fallback for any variables not caught
       )
     )
   
   # Reorder variables within each category by mean
   delta_matrix_values <- delta_matrix_values %>%
     group_by(category) %>%
-    mutate(variables = fct_reorder(variables, mean)) %>%
+    mutate(variables = forcats::fct_reorder(variables, mean)) %>% # Explicitly use forcats::fct_reorder
     ungroup()
   
   # Reorder categories (ensure a consistent order)
@@ -178,13 +178,13 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
                       "Performance: Economy and Government",
                       "Interaction: Age × Gender",
                       "Interaction: Age × Religiosity",
-                      "Other")
+                      "Uncategorized")
   delta_matrix_values$category <- factor(delta_matrix_values$category, levels = intersect(category_order, unique(delta_matrix_values$category)))
   
   # Define custom labels for variables
   custom_labels <- c(
     "Age_std" = "Age",
-    "Gender" = "Male",
+    "Gender" = "Female",
     "Education" = "Education",
     "Income_std" = "Income",
     "Religiosity" = "Religiosity",
@@ -199,13 +199,13 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
     "NatPride" = "National Pride",
     "Ideology" = "L-R Ideology",
     "Age_std:Gender" = "Age × Gender",
-    "Age_std:Religiosity" = "Age × Religiosity"
+    "Religiosity:Age_std" = "Age × Religiosity"
   )
   
   # Create the plot
   plot <- ggplot(delta_matrix_values, aes(x = variables, y = mean)) +
     geom_point(size = 1, shape = 10) +
-    geom_errorbar(aes(ymin = lower, ymax = upper), width = 1, size = .25) +
+    geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.25, size = .25) +
     coord_flip() +
     geom_hline(yintercept = 0, color = "red", linetype = "dashed", size = 0.5) +
     facet_grid(category ~ ., scales = "free_y", space = "free_y") +
@@ -236,6 +236,9 @@ plot_coefficients(endorse_object_model3, "Model 3 Age_Religiosity Interaction", 
 
 
 ######################################
+# This part of your code is for the macro plot and is separate from the coefficient plot issue.
+# Ensure that endorse_object_model1 is defined before this section runs.
+
 # Extract and standardize MCMC samples for Model 1 (as example for macro plot)
 # --------------------------------------
 # Extract MCMC samples for lambda and sigma²
