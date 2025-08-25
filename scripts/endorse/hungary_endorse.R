@@ -143,24 +143,24 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
   # Get column names of delta matrix excluding the intercept
   # Updated regex to include all specified variables and interactions for Hungary models
   delta_cols <- colnames(endorse_object$delta)[grepl("^(ChildHome|ChurchPolitics|LawOrder|GayPartner|Religiosity|Children|MaleJobs|Age_std|Capital|Married|Income_std|Gender|EconomicFuture|Education|GovDissatisfaction|Fidesz_vote|Age_std:Gender|Religiosity:Age_std|Age_std:Religiosity)", colnames(endorse_object$delta))]
-  
+
   # Create the dataframe using posterior samples
   delta_matrix_values <- data.frame(
     mean = apply(endorse_object$delta[, delta_cols], 2, mean),
     lower = apply(endorse_object$delta[, delta_cols], 2, quantile, 0.025),
     upper = apply(endorse_object$delta[, delta_cols], 2, quantile, 0.975)
   )
-  
+
   # Add variable names and categories
   delta_matrix_values$variables <- rownames(delta_matrix_values) # Use rownames for variables
   delta_matrix_values$category <- NA
-  
+
   # Define categories based on your provided groups and the new variable
   descriptives_socio_economic <- c("Age_std", "Gender", "Education", "Income_std", "Married", "Capital", "Children")
   conservatism <- c("ChildHome", "GayPartner", "MaleJobs", "ChurchPolitics", "Religiosity")
   performance_economy_and_government <- c("GovDissatisfaction", "EconomicFuture", "LawOrder")
   political_affiliation <- c("Fidesz_vote")
-  
+
   # Assign categories
   delta_matrix_values <- delta_matrix_values %>%
     mutate(
@@ -174,13 +174,13 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
         TRUE ~ "Other" # Catch any variables not explicitly categorized
       )
     )
-  
+
   # Reorder variables within each category by mean
   delta_matrix_values <- delta_matrix_values %>%
     group_by(category) %>%
     mutate(variables = forcats::fct_reorder(variables, mean)) %>% # Explicitly use forcats::fct_reorder
     ungroup()
-  
+
   # Reorder categories (ensure a consistent order, adding new category)
   category_order <- c("Descriptives Socio-Economic",
                       "Conservatism",
@@ -190,7 +190,7 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
                       "Interaction: Age × Religiosity",
                       "Other")
   delta_matrix_values$category <- factor(delta_matrix_values$category, levels = intersect(category_order, unique(delta_matrix_values$category)))
-  
+
   # Define custom labels for variables (drawing inspiration from both scripts)
   custom_labels <- c(
     "Age_std" = "Age",
@@ -213,7 +213,7 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
     "Religiosity:Age_std" = "Age × Religiosity", # To catch if named this way
     "Age_std:Religiosity" = "Age × Religiosity" # To catch if named this way
   )
-  
+
   # Create the plot
   plot <- ggplot(delta_matrix_values, aes(x = variables, y = mean)) +
     geom_point(size = 1, shape = 10) +
@@ -234,7 +234,7 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
       panel.border = element_blank()
     ) +
     labs(x = NULL, y = "Coefficient Estimate")
-  
+
   # Save to PNG
   ggsave(paste0("~/projects/bustikova/output/endorse/coef_plot/hungary_coef_plot_", tolower(gsub(" ", "_", model_name)), ".png"), plot, width = 12, height = 10)
 }

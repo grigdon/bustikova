@@ -60,7 +60,7 @@ endorse_object_model1 <- endorse(Y = Y,
                                  prop = 0.008,
                                  formula.indiv = formula( ~ ChildHome + GayPartner + Religiosity + MaleChauvinism +
                                                             Age_std + MaleJobs + Ukraine + NatPride + PolicyPolGrievance +
-                                                            EconGrievanceProspInd + DemonstrateTrad + Ideology + 
+                                                            EconGrievanceProspInd + DemonstrateTrad + Ideology +
                                                             Education + Gender + Income_std),
                                  omega2.out = TRUE,
                                  hierarchical = FALSE
@@ -74,7 +74,7 @@ endorse_object_model2 <- endorse(Y = Y,
                                  prop = 0.008,
                                  formula.indiv = formula( ~ ChildHome + GayPartner + Religiosity + MaleChauvinism +
                                                             Age_std + MaleJobs + Ukraine + NatPride + PolicyPolGrievance +
-                                                            EconGrievanceProspInd + DemonstrateTrad + Ideology + 
+                                                            EconGrievanceProspInd + DemonstrateTrad + Ideology +
                                                             Education + Gender + Income_std + Age_std*Gender),
                                  omega2.out = TRUE,
                                  hierarchical = FALSE
@@ -136,23 +136,23 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
   # Get column names of delta matrix excluding the intercept
   # Adjust regex to include all specified main effects and interactions
   delta_cols <- colnames(endorse_object$delta)[grepl("^(ChildHome|GayPartner|Religiosity|MaleChauvinism|Age_std|MaleJobs|Ukraine|NatPride|PolicyPolGrievance|EconGrievanceProspInd|DemonstrateTrad|Ideology|Education|Gender|Income_std|Age_std:Gender|Religiosity:Age_std)", colnames(endorse_object$delta))]
-  
+
   # Create the dataframe using posterior samples
   delta_matrix_values <- data.frame(
     mean = apply(endorse_object$delta[, delta_cols], 2, mean),
     lower = apply(endorse_object$delta[, delta_cols], 2, quantile, 0.025),
     upper = apply(endorse_object$delta[, delta_cols], 2, quantile, 0.975)
   )
-  
+
   # Add variable names and categories
   delta_matrix_values$variables <- rownames(delta_matrix_values) # Use rownames for variables
   delta_matrix_values$category <- NA
-  
+
   # Define categories based on your provided groups
   descriptives_socio_economic <- c("Age_std", "Gender", "Education", "Income_std", "Religiosity")
   conservatism <- c("ChildHome", "GayPartner", "DemonstrateTrad", "MaleChauvinism", "MaleJobs")
   performance_economy_and_government <- c("PolicyPolGrievance", "EconGrievanceProspInd", "Ukraine", "NatPride", "Ideology")
-  
+
   # Assign categories
   delta_matrix_values <- delta_matrix_values %>%
     mutate(
@@ -165,13 +165,13 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
         TRUE ~ "Uncategorized" # Fallback for any variables not caught
       )
     )
-  
+
   # Reorder variables within each category by mean
   delta_matrix_values <- delta_matrix_values %>%
     group_by(category) %>%
     mutate(variables = forcats::fct_reorder(variables, mean)) %>% # Explicitly use forcats::fct_reorder
     ungroup()
-  
+
   # Reorder categories (ensure a consistent order)
   category_order <- c("Descriptives Socio-Economic",
                       "Conservatism",
@@ -180,7 +180,7 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
                       "Interaction: Age × Religiosity",
                       "Uncategorized")
   delta_matrix_values$category <- factor(delta_matrix_values$category, levels = intersect(category_order, unique(delta_matrix_values$category)))
-  
+
   # Define custom labels for variables
   custom_labels <- c(
     "Age_std" = "Age",
@@ -194,14 +194,14 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
     "MaleChauvinism" = "Male Leader",
     "MaleJobs" = "Male Jobs",
     "PolicyPolGrievance" = "Gov. Dissatisfaction",
-    "EconGrievanceProspInd" = "Economic Future", 
+    "EconGrievanceProspInd" = "Economic Future",
     "Ukraine" = "Ukraine Refugee",
     "NatPride" = "National Pride",
     "Ideology" = "L-R Ideology",
     "Age_std:Gender" = "Age × Gender",
     "Religiosity:Age_std" = "Age × Religiosity"
   )
-  
+
   # Create the plot
   plot <- ggplot(delta_matrix_values, aes(x = variables, y = mean)) +
     geom_point(size = 1, shape = 10) +
@@ -222,7 +222,7 @@ plot_coefficients <- function(endorse_object, model_name, plot_title_suffix) {
       panel.border = element_blank()
     ) +
     labs(x = NULL, y = "Coefficient Estimate")
-  
+
   # Save to PNG
   ggsave(paste0("~/projects/bustikova/output/endorse/coef_plot/czechia_coef_plot_", tolower(gsub(" ", "_", model_name)), ".png"), plot, width = 12, height = 10)
 }
