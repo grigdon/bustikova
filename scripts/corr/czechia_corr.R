@@ -3,7 +3,7 @@ library(corrplot)
 library(haven)
 library(dplyr)
 
-# Read dataset 
+# Read dataset
 data_cz <- read_sav("~/projects/bustikova/data/scrubbed_data/czechia_scrubbed.sav")
 
 # Select only explanatory variables
@@ -55,7 +55,7 @@ rownames(cor_matrix_cz) <- custom_labels
 output_dir = "~/projects/bustikova/output/corr"
 
 pdf(file = file.path(output_dir, "czechia_corr.pdf"), width = 8, height = 6)
-corr_plot <- corrplot(cor_matrix_cz, 
+corr_plot <- corrplot(cor_matrix_cz,
                       method = "color",           # Color tiles
                       type = "upper",             # Show only upper triangle
                       order = "hclust",           # Hierarchical clustering order

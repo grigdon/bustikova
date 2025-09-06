@@ -3,7 +3,6 @@ library(dplyr)
 library(missForest)
 library(tibble)
 library(flextable)
-library(magick)
 library(ggplot2)
 library(patchwork)
 
@@ -23,6 +22,7 @@ hungary_questions <- hungary_questions %>%
                                        `4` = 1,
                                        `2` = 3,
                                        `3` = 2)))
+
 #-------------------------
 # 2. Processing Covariates
 #-------------------------
@@ -32,7 +32,7 @@ data_path <- "~/projects/bustikova/data/raw_data/var/hungary_raw_data.dta"
 hungary_vars <- as_tibble(read_dta(data_path))
 
 hungary_vars <- hungary_vars %>% select(
-  childhome, churchpolit, laworder, gaypartner, q418, children, 
+  childhome, churchpolit, laworder, gaypartner, q418, children,
   malejobs, age, settl2, marital, income, gndr, ecgrproi, educ, A4_2, votefut
 )
 
@@ -172,7 +172,7 @@ for (col_name in names(hungary_vars_for_imputation)) {
           axis.line = element_line(colour = "black"),
           axis.text = element_text(color = "black"),
           axis.title = element_text(color = "black"))
-  
+
   if (is.numeric(hungary_vars_for_imputation[[col_name]])) {
     numeric_data <- na.omit(hungary_vars_for_imputation[[col_name]])
     if(length(numeric_data) > 1) {
@@ -190,7 +190,7 @@ for (col_name in names(hungary_vars_for_imputation)) {
   } else {
     p_before <- p_before + geom_bar(fill = "grey70", color = "black", linewidth = 0.2)
   }
-  
+
   p_after <- ggplot(imputed_hungary_vars_mf, aes_string(x = col_name)) +
     labs(title = paste(col_name, "(After Imputation)"),
          x = col_name, y = "Frequency") +
@@ -202,7 +202,7 @@ for (col_name in names(hungary_vars_for_imputation)) {
           axis.line = element_line(colour = "black"),
           axis.text = element_text(color = "black"),
           axis.title = element_text(color = "black"))
-  
+
   if (is.numeric(imputed_hungary_vars_mf[[col_name]])) {
     numeric_data <- na.omit(imputed_hungary_vars_mf[[col_name]])
     if(length(numeric_data) > 1) {
@@ -220,7 +220,7 @@ for (col_name in names(hungary_vars_for_imputation)) {
   } else {
     p_after <- p_after + geom_bar(fill = "grey70", color = "black", linewidth = 0.2)
   }
-  
+
   combined_plot <- p_before + p_after
   ggsave(filename = paste0("~/projects/bustikova/output/scrubbing/hungary/histograms/histogram_", col_name, "_before_and_after_imputation.png"),
          plot = combined_plot, width = 14, height = 5, dpi = 300)
