@@ -248,7 +248,6 @@ plot_coefficients(endorse_object_model3, "Model 3 Age_Religiosity Interaction", 
 # Plot for Model 4
 plot_coefficients(endorse_object_model4, "Model 4 Fidesz_vote Covariate", "(with Fidesz Vote Covariate)")
 
-
 ######################################
 # Extract and standardize MCMC samples for Model 1 (as example for macro plot)
 # --------------------------------------
@@ -307,7 +306,10 @@ box_plot_m1 <- ggplot(box_data_long_m1, aes(x = Question, y = Support, fill = Qu
     lwd = 0.6
   ) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "gray50", size = 0.5) +
-  ylim(-1.5, 1.5) +
+  # MODIFICATION: Zoom in on the y-axis to see the effects better.
+  # Using coord_cartesian zooms without clipping the data.
+  # You can adjust these limits as needed, e.g., c(-0.5, 0.5) or c(-1, 1).
+  coord_cartesian(ylim = c(-0.6, 0.6)) +
   labs(
     title = "Hungary: Standardized Support by Question (Model 1)",
     subtitle = "Standardized posterior distributions across survey questions",
