@@ -132,7 +132,7 @@ create_marginal_plot <- function(endorse_model, var_name, question_name, data, v
     } else {
       temp_data[[var_name]] <- val
     }
-    prediction_draws <- predict(endorse_model, newdata = temp_data, type = "prob.support", standardize = FALSE)
+    prediction_draws <- predict(endorse_model, newdata = temp_data, type = "prob.support", standardize = TRUE)
     results_list[[length(results_list) + 1]] <- data.frame(
       var_value = val, mean_prob = mean(prediction_draws),
       lower_ci = quantile(prediction_draws, 0.025), upper_ci = quantile(prediction_draws, 0.975)
@@ -187,7 +187,7 @@ vars_of_interest <- names(var_config)
 model_list <- list(Q1 = endorse_Q1, Q2 = endorse_Q2, Q3 = endorse_Q3)
 
 # MODIFICATION: Define base output directory and subdirectories
-output_dir <- "~/projects/bustikova/output/marginal_effects/hungary/" # Update if needed
+output_dir <- "~/projects/bustikova/output/marginal_effects/hungary_standardized/" # Update if needed
 png_dir <- file.path(output_dir, "png")
 pdf_dir <- file.path(output_dir, "pdf")
 
